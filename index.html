@@ -1,0 +1,971 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#162d25">
+<title>Photocheck Avaliação Completa</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Marcellus&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: telas de formulário e revisão em coluna marfim; captura em tela cheia escura, vídeo ao fundo, painel de instrução embaixo. */
+:root{
+  --verde:#162d25; --musgo:#41514a; --ouro:#ceb78e; --ouro-escuro:#9c8152; --marfim:#f9f5ed;
+  --bg:#f9f5ed; --fg:#162d25; --fg2:#4d5a53; --linha:#e3dac8; --cartao:#fffdf8; --acento:#9c8152;
+  --botao-bg:#162d25; --botao-fg:#f9f5ed;
+  --ok:#3c8558; --alerta:#a8721d; --erro:#b04a3a;
+  --cap-bg:#0a1310; --cap-fg:#f9f5ed; --cap-fg2:rgba(249,245,237,.68); --cap-painel:rgba(10,19,16,.78);
+  --f-display:'Marcellus','Iowan Old Style','Times New Roman',serif;
+  --f-corpo:'Manrope',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --f-num:'JetBrains Mono',ui-monospace,'SFMono-Regular',Menlo,monospace;
+  --raio:10px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0e1a16; --fg:#f2ece0; --fg2:#b4aea0; --linha:#273832; --cartao:#14261f; --acento:#ceb78e;
+    --botao-bg:#ceb78e; --botao-fg:#162d25; --ok:#7cc097; --alerta:#e2b36b; --erro:#e3897a; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0e1a16; --fg:#f2ece0; --fg2:#b4aea0; --linha:#273832; --cartao:#14261f; --acento:#ceb78e;
+  --botao-bg:#ceb78e; --botao-fg:#162d25; --ok:#7cc097; --alerta:#e2b36b; --erro:#e3897a; color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.55 var(--f-corpo);-webkit-font-smoothing:antialiased}
+[hidden]{display:none!important}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--acento);outline-offset:2px}
+
+/* ---------- Telas em coluna ---------- */
+.coluna{max-width:720px;margin:0 auto;padding-block:max(28px,env(safe-area-inset-top)) max(40px,env(safe-area-inset-bottom));
+  padding-left:max(16px,env(safe-area-inset-left));padding-right:max(16px,env(safe-area-inset-right));display:grid;gap:28px}
+.marca{display:flex;align-items:center;gap:10px;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--fg2)}
+.marca .selo{width:28px;height:28px;border-radius:50%;border:1.5px solid var(--acento);display:grid;place-items:center;font-family:var(--f-display);font-size:13px;letter-spacing:0;color:var(--acento)}
+h1{font-family:var(--f-display);font-weight:400;font-size:clamp(30px,6vw,42px);line-height:1.1;margin:0;text-wrap:balance}
+h2{font-family:var(--f-display);font-weight:400;font-size:22px;margin:0 0 4px}
+.lead{margin:8px 0 0;color:var(--fg2);max-width:60ch}
+.bloco{display:grid;gap:14px}
+.campo{display:grid;gap:6px}
+.campo label{font-weight:600;font-size:14px}
+.campo input[type=text]{border:1px solid var(--linha);background:var(--cartao);border-radius:var(--raio);padding:12px 14px;min-height:48px}
+.campo input[type=text]:focus{border-color:var(--acento);outline:none;box-shadow:0 0 0 3px color-mix(in srgb,var(--acento) 25%,transparent)}
+.modos{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+.modo{position:relative;border:1px solid var(--linha);background:var(--cartao);border-radius:var(--raio);padding:14px 14px 14px 44px;display:grid;gap:2px}
+.modo input{position:absolute;left:14px;top:17px;accent-color:var(--acento);width:18px;height:18px;margin:0}
+.modo strong{font-weight:600}
+.modo span{font-size:13px;color:var(--fg2)}
+.modo:has(input:checked){border-color:var(--acento);box-shadow:inset 0 0 0 1px var(--acento)}
+.lista-prep{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.lista-prep label{display:flex;gap:10px;align-items:flex-start}
+.lista-prep input,.consent input,.chave input{accent-color:var(--acento);width:18px;height:18px;margin:2px 0 0;flex:none}
+.consent{border:1px solid var(--linha);background:var(--cartao);border-radius:var(--raio);padding:16px;display:grid;gap:10px;font-size:14px}
+.consent p{margin:0;color:var(--fg2)}
+.consent label{display:flex;gap:10px;align-items:flex-start;font-weight:600}
+.chave{display:flex;gap:10px;align-items:center;font-weight:600}
+.roteiro{margin:0;padding:0;list-style:none;display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:6px 18px;font-size:14px}
+.roteiro li{display:flex;gap:10px;align-items:baseline;border-bottom:1px solid var(--linha);padding:6px 0}
+.roteiro .n{font-family:var(--f-num);font-size:12px;color:var(--acento);min-width:1.5em}
+.roteiro .ang{margin-left:auto;font-family:var(--f-num);font-size:12px;color:var(--fg2);white-space:nowrap}
+.acoes{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.btn{border:0;border-radius:999px;padding:14px 26px;min-height:50px;font-weight:700;background:var(--botao-bg);color:var(--botao-fg);letter-spacing:.01em}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn.sec{background:transparent;color:var(--fg);box-shadow:inset 0 0 0 1.5px var(--linha)}
+.status{font-size:13px;color:var(--fg2);display:flex;gap:8px;align-items:center}
+.status .ponto{width:8px;height:8px;border-radius:50%;background:var(--alerta)}
+.status.pronto .ponto{background:var(--ok)}
+.status.erro .ponto{background:var(--erro)}
+.rodape{font-size:12px;color:var(--fg2);border-top:1px solid var(--linha);padding-top:14px}
+
+/* ---------- Captura ---------- */
+#tela-captura{position:fixed;inset:0;background:var(--cap-bg);color:var(--cap-fg);overflow:hidden;z-index:5}
+#video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#000}
+#video.espelhado{transform:scaleX(-1)}
+#sobreposicao{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;transition:opacity .35s ease-out}
+.flash.on{opacity:.85;transition:none}
+.topo{position:absolute;left:0;right:0;top:0;display:flex;align-items:center;gap:10px;
+  padding:max(12px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) 12px max(16px,env(safe-area-inset-left));
+  background:linear-gradient(rgba(10,19,16,.75),rgba(10,19,16,0))}
+.topo .vista-titulo{flex:1;min-width:0}
+.topo .vista-titulo small{display:block;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ouro)}
+.topo .vista-titulo strong{font-family:var(--f-display);font-weight:400;font-size:20px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ic{width:44px;height:44px;border-radius:50%;border:1px solid rgba(249,245,237,.28);background:rgba(10,19,16,.45);color:var(--cap-fg);display:grid;place-items:center;flex:none}
+.ic svg{width:20px;height:20px}
+.ic[aria-pressed="false"]{opacity:.55}
+.painel{position:absolute;left:0;right:0;bottom:0;display:grid;gap:12px;
+  padding:16px max(16px,env(safe-area-inset-right)) max(16px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));
+  background:linear-gradient(rgba(10,19,16,0),var(--cap-painel) 28%,var(--cap-painel))}
+.painel > *{min-width:0}
+.instrucao{font-family:var(--f-display);font-size:clamp(20px,4.6vw,26px);line-height:1.25;text-wrap:balance;min-height:1.25em}
+.correcao{font-size:15px;color:var(--ouro);min-height:1.5em;font-weight:600}
+.linha-hud{display:flex;gap:14px;align-items:flex-end;justify-content:space-between;flex-wrap:wrap}
+.chips{display:flex;flex-wrap:wrap;gap:6px;flex:1;min-width:0}
+.chip{font-size:12px;font-weight:600;padding:5px 10px 5px 8px;border-radius:999px;border:1px solid rgba(249,245,237,.22);color:var(--cap-fg2);display:inline-flex;gap:6px;align-items:center}
+.chip::before{content:"";width:7px;height:7px;border-radius:50%;background:rgba(249,245,237,.35)}
+.chip.ok{color:var(--cap-fg);border-color:rgba(206,183,142,.6)}
+.chip.ok::before{background:#8fd3a8}
+.hud{display:grid;gap:4px;justify-items:end}
+#pad{width:132px;height:92px;border-radius:8px;background:rgba(10,19,16,.55);border:1px solid rgba(249,245,237,.2)}
+.hud-num{font-family:var(--f-num);font-size:11px;color:var(--cap-fg2);font-variant-numeric:tabular-nums;white-space:nowrap}
+.base{display:flex;align-items:center;gap:12px}
+.miniaturas{display:flex;gap:6px;flex:1;min-width:0;overflow-x:auto;padding-bottom:2px}
+.mini{width:32px;height:42px;border-radius:6px;flex:none;border:1px solid rgba(249,245,237,.22);background:rgba(249,245,237,.06) center/cover no-repeat;display:grid;place-items:center;font-family:var(--f-num);font-size:11px;color:var(--cap-fg2)}
+.mini.atual{border-color:var(--ouro);box-shadow:0 0 0 1.5px var(--ouro);color:var(--cap-fg)}
+.mini.feita{color:transparent;border-color:rgba(143,211,168,.7)}
+.mini.pulada{border-style:dashed}
+.disparo{width:64px;height:64px;border-radius:50%;flex:none;border:3px solid var(--marfim);background:transparent;display:grid;place-items:center}
+.disparo::after{content:"";width:48px;height:48px;border-radius:50%;background:var(--marfim)}
+.disparo:active::after{transform:scale(.92)}
+.btn-pular{border:1px solid var(--ouro);background:rgba(10,19,16,.6);color:var(--ouro);border-radius:999px;padding:10px 16px;font-weight:700;font-size:14px}
+.topo{z-index:3}
+.aviso-cap{position:absolute;inset:0;z-index:2;display:grid;place-items:center;padding:24px;background:rgba(10,19,16,.86);text-align:center}
+.aviso-cap > div{max-width:420px;display:grid;gap:14px;justify-items:center}
+.aviso-cap h2{color:var(--cap-fg)}
+.aviso-cap p{margin:0;color:var(--cap-fg2)}
+.aviso-cap .btn{background:var(--ouro);color:var(--verde)}
+.giro{width:34px;height:34px;border-radius:50%;border:3px solid rgba(206,183,142,.25);border-top-color:var(--ouro);animation:gira 1s linear infinite}
+@keyframes gira{to{transform:rotate(360deg)}}
+
+/* ---------- Revisão ---------- */
+.resumo{display:flex;flex-wrap:wrap;gap:8px 20px;font-size:14px;color:var(--fg2)}
+.resumo b{color:var(--fg);font-weight:600}
+.grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px}
+.foto{border:1px solid var(--linha);background:var(--cartao);border-radius:var(--raio);overflow:hidden;display:grid;grid-template-rows:auto 1fr}
+.foto .img{aspect-ratio:3/4;background:color-mix(in srgb,var(--fg) 6%,transparent);display:grid;place-items:center;color:var(--fg2);font-size:13px;max-width:100%}
+.foto img{width:100%;height:100%;object-fit:cover;display:block}
+.foto .info{padding:10px 12px 12px;display:grid;gap:4px}
+.foto .titulo{display:flex;gap:8px;align-items:baseline}
+.foto .titulo .n{font-family:var(--f-num);font-size:12px;color:var(--acento)}
+.foto .titulo strong{font-weight:600;font-size:14px}
+.foto .meta{font-family:var(--f-num);font-size:11px;color:var(--fg2);font-variant-numeric:tabular-nums}
+.selo-st{justify-self:start;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:2px 8px;border-radius:999px}
+.selo-st.aceita{color:var(--ok);background:color-mix(in srgb,var(--ok) 14%,transparent)}
+.selo-st.manual{color:var(--alerta);background:color-mix(in srgb,var(--alerta) 14%,transparent)}
+.selo-st.pulada,.selo-st.pendente{color:var(--erro);background:color-mix(in srgb,var(--erro) 12%,transparent)}
+.foto .refazer{justify-self:start;margin-top:4px;border:0;background:none;padding:6px 0;font-weight:700;font-size:13px;color:var(--acento)}
+.nota{font-size:13px;color:var(--fg2);margin:0;max-width:62ch}
+@media (prefers-reduced-motion: reduce){.giro{animation:none}.flash{transition:none}}
+</style>
+</head>
+<body>
+
+<!-- ================= TELA 1: PREPARO ================= -->
+<main id="tela-inicio" class="coluna">
+  <div class="marca"><span class="selo">DF</span>Photocheck · Avaliação Completa</div>
+  <header>
+    <h1>Captura facial guiada</h1>
+    <p class="lead">Nove vistas padronizadas em menos de dois minutos. A câmera acompanha o ângulo da cabeça e fotografa sozinha quando a posição, a luz e a expressão estão corretas.</p>
+  </header>
+
+  <section class="bloco" aria-labelledby="t-dados">
+    <h2 id="t-dados">Sessão</h2>
+    <div class="campo">
+      <label for="paciente">Nome da paciente</label>
+      <input type="text" id="paciente" autocomplete="off" placeholder="Ex.: Maria Fernandes">
+    </div>
+    <div class="campo">
+      <label for="operador">Profissional responsável</label>
+      <input type="text" id="operador" autocomplete="off" placeholder="Ex.: Dr. Sandro Valente">
+    </div>
+    <div class="modos" role="radiogroup" aria-label="Modo de captura">
+      <label class="modo"><input type="radio" name="modo" id="modo-consultorio" value="consultorio" checked><strong>No consultório</strong><span>Câmera traseira, celular no tripé, profissional conduz</span></label>
+      <label class="modo"><input type="radio" name="modo" id="modo-casa" value="casa"><strong>Em casa</strong><span>Câmera frontal, a paciente se vê e a voz conduz</span></label>
+    </div>
+    <label class="chave"><input type="checkbox" id="voz" checked> Voz guiando a paciente</label>
+  </section>
+
+  <section class="bloco" aria-labelledby="t-prep">
+    <h2 id="t-prep">Antes de começar</h2>
+    <ul class="lista-prep">
+      <li><label><input type="checkbox" id="p1"> Cabelo preso e orelhas visíveis</label></li>
+      <li><label><input type="checkbox" id="p2"> Sem óculos, sem brincos grandes e sem maquiagem pesada</label></li>
+      <li><label><input type="checkbox" id="p3"> Parede lisa e neutra atrás da paciente</label></li>
+      <li><label><input type="checkbox" id="p4"> Luz frontal e suave, sem luz forte de teto</label></li>
+      <li><label><input type="checkbox" id="p5"> Celular na altura dos olhos, a cerca de 1 metro</label></li>
+    </ul>
+  </section>
+
+  <section class="consent" aria-labelledby="t-lgpd">
+    <h2 id="t-lgpd">Consentimento (LGPD)</h2>
+    <p>As fotos do rosto e os pontos faciais calculados são dados biométricos, ou seja, dados pessoais sensíveis. Eles serão usados apenas para avaliação, planejamento e acompanhamento do tratamento, ficam guardados com acesso restrito à equipe responsável e podem ser excluídos a pedido da paciente a qualquer momento. Este termo é separado da autorização de uso de imagem em redes sociais.</p>
+    <label><input type="checkbox" id="consentimento"> A paciente leu e autoriza a captura e o armazenamento das imagens para fins clínicos.</label>
+  </section>
+
+  <section class="bloco" aria-labelledby="t-roteiro">
+    <h2 id="t-roteiro">Roteiro das vistas</h2>
+    <ol class="roteiro" id="roteiro"></ol>
+  </section>
+
+  <div class="acoes">
+    <button class="btn" id="iniciar" disabled>Iniciar avaliação</button>
+    <span class="status" id="status-modelo"><span class="ponto"></span><span>Preparando o rastreamento facial…</span></span>
+  </div>
+
+  <p class="rodape">Protótipo v0.1 do módulo de captura do Photocheck · Drawn Face Academy · Desenvolvido por Aurya. As fotos ficam só neste aparelho até você baixar o pacote.</p>
+</main>
+
+<!-- ================= TELA 2: CAPTURA ================= -->
+<section id="tela-captura" hidden aria-label="Captura">
+  <video id="video" playsinline muted></video>
+  <canvas id="sobreposicao"></canvas>
+  <div class="flash" id="flash"></div>
+
+  <div class="topo">
+    <button class="ic" id="encerrar" aria-label="Encerrar e revisar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+    <div class="vista-titulo"><small id="vista-contador">Vista 1 de 9</small><strong id="vista-nome">Frontal repouso</strong></div>
+    <button class="ic" id="btn-voz" aria-label="Voz ligada" aria-pressed="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16.5 8.5a5 5 0 010 7"/></svg>
+    </button>
+    <button class="ic" id="trocar-camera" aria-label="Trocar câmera">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><path d="M9.5 13.5a2.5 2.5 0 104.6-1.4M14 10l.3 2.3-2.2.4"/></svg>
+    </button>
+  </div>
+
+  <div class="painel">
+    <div>
+      <div class="instrucao" id="instrucao" aria-live="polite">Olhe para a câmera, com o rosto relaxado.</div>
+      <div class="correcao" id="correcao" aria-live="polite"></div>
+    </div>
+    <div class="linha-hud">
+      <div class="chips" id="chips"></div>
+      <div class="hud">
+        <canvas id="pad" width="264" height="184" aria-hidden="true"></canvas>
+        <div class="hud-num" id="hud-num">yaw — · pitch — · roll —</div>
+      </div>
+    </div>
+    <div class="base">
+      <div class="miniaturas" id="miniaturas"></div>
+      <button class="btn-pular" id="pular" hidden>Pular vista</button>
+      <button class="disparo" id="disparo-manual" aria-label="Disparar foto manualmente"></button>
+    </div>
+  </div>
+
+  <div class="aviso-cap" id="aviso-cap" hidden>
+    <div>
+      <div class="giro" id="aviso-giro"></div>
+      <h2 id="aviso-titulo">Abrindo a câmera…</h2>
+      <p id="aviso-texto"></p>
+      <button class="btn" id="aviso-botao" hidden>Tentar de novo</button>
+    </div>
+  </div>
+</section>
+
+<!-- ================= TELA 3: REVISÃO ================= -->
+<main id="tela-revisao" class="coluna" hidden>
+  <div class="marca"><span class="selo">DF</span>Photocheck · Avaliação Completa</div>
+  <header>
+    <h1 id="rev-titulo">Revisão das fotos</h1>
+    <div class="resumo" id="rev-resumo"></div>
+  </header>
+  <div class="grade" id="grade"></div>
+  <div class="acoes">
+    <button class="btn" id="baixar">Baixar pacote da sessão (.zip)</button>
+    <button class="btn sec" id="continuar" hidden>Capturar vistas pendentes</button>
+    <button class="btn sec" id="nova">Nova avaliação</button>
+  </div>
+  <p class="nota">O pacote traz as fotos em resolução máxima (AAAA-MM-DD_paciente_vista-N.jpg), os 478 pontos faciais de cada vista e o registro da sessão com ângulos e checagens. Na versão integrada, ele sobe sozinho para o Drive da clínica e aparece na ficha do Vox Clínica.</p>
+  <p class="rodape">Protótipo v0.1 · Drawn Face Academy · Desenvolvido por Aurya</p>
+</main>
+
+<script src="./lib/jszip.min.js"></script>
+<script type="module">
+/* =====================================================================
+   CONFIGURAÇÃO — valores iniciais, a calibrar no piloto com 20 pacientes
+   ===================================================================== */
+const params = new URLSearchParams(location.search);
+// Em visualizações embutidas (sem endereço próprio) new URL falha; nesse caso usa o caminho relativo
+function caminho(p){ try { return new URL(p, document.baseURI).href; } catch(e){ return p; } }
+const SEM_ENDERECO = !/^https?:$/.test(location.protocol) || location.origin === 'null';
+const CONFIG = {
+  versao: '0.1.0',
+  // Tudo servido da própria pasta do app: não depende de CDN externo
+  bundle: params.get('bundle') || caminho('./mediapipe/vision_bundle.js'),
+  wasm:   params.get('wasm')   || caminho('./mediapipe/wasm'),
+  modelo: params.get('modelo') || caminho('./modelo/face_landmarker.task'),
+  estabilidadeMs: 500,      // pose dentro da tolerância por 0,5 s
+  dicaMs: 20000,            // instrução detalhada após 20 s
+  pularMs: 40000,           // oferece pular após 40 s
+  intervaloCorrecaoMs: 2500,// no máximo uma correção falada a cada 2,5 s
+  distancia: [0.40, 0.64],  // altura do rosto (testa ao queixo) / altura do quadro
+  centro: 0.08,             // desvio máximo do centro do quadro
+  brilho: [70, 210],        // brilho médio do rosto, 0–255
+  estouro: 0.04,            // fração máxima de pixels estourados
+  difLados: 0.15,           // diferença máxima de luz entre os lados do rosto
+  foco: 14,                 // variância mínima do Laplaciano (nitidez)
+  olhoFechado: 0.5, sorrisoNeutro: 0.35, sorrisoAmplo: 0.5, bocaAberta: 0.3
+};
+
+/* Convenção: yaw + = paciente gira para a própria direita; pitch + = queixo para cima. */
+const VISTAS = [
+  { n:1, id:'frontal-repouso', nome:'Frontal repouso', yaw:[-3,3], pitch:[-3,3], roll:2, expr:'neutra', olhos:true,
+    fala:'Olhe para a câmera, com o rosto relaxado.',
+    dica:'Olhe direto para a lente, com o queixo reto, como se olhasse para o horizonte. Lábios relaxados, sem sorrir.' },
+  { n:2, id:'frontal-sorriso', nome:'Frontal sorriso', yaw:[-3,3], pitch:[-3,3], roll:2, expr:'sorriso', olhos:true,
+    fala:'Agora um sorriso bem aberto.',
+    dica:'Sorria mostrando os dentes, sem fechar os olhos, e mantenha a cabeça reta.' },
+  { n:3, id:'tres-quartos-direita', nome:'3/4 direita', yaw:[40,50], pitch:[-3,3], roll:3, expr:'neutra', olhos:true,
+    fala:'Gire devagar para a sua direita.',
+    dica:'Gire só a cabeça para a sua direita, até a ponta do nariz quase encostar no contorno da bochecha. Os ombros ficam parados.' },
+  { n:4, id:'tres-quartos-esquerda', nome:'3/4 esquerda', yaw:[-50,-40], pitch:[-3,3], roll:3, expr:'neutra', olhos:true,
+    fala:'Agora devagar para a sua esquerda, até o mesmo ponto.',
+    dica:'Gire só a cabeça para a sua esquerda, até a ponta do nariz quase encostar no contorno da bochecha. Os ombros ficam parados.' },
+  // Perfis: o rastreador satura perto de 90°, então aceita a partir de 65° (calibrar no piloto)
+  { n:5, id:'perfil-direito', nome:'Perfil direito', yaw:[65,100], pitch:[-4,4], roll:4, expr:'neutra', olhos:true,
+    fala:'Continue girando para a sua direita, até ficar de perfil.',
+    dica:'Gire até o perfil completo, de forma que a câmera veja só um lado do rosto. Olhe para um ponto fixo na parede.' },
+  { n:6, id:'perfil-esquerdo', nome:'Perfil esquerdo', yaw:[-100,-65], pitch:[-4,4], roll:4, expr:'neutra', olhos:true,
+    fala:'Agora o outro perfil, para a sua esquerda.',
+    dica:'Gire até o outro perfil completo, de forma que a câmera veja só um lado do rosto. Olhe para um ponto fixo na parede.' },
+  { n:7, id:'submentoniana', nome:'Submentoniana', yaw:[-5,5], pitch:[30,40], roll:3, expr:'neutra', olhos:false, dist:[0.30,0.64],
+    fala:'Volte de frente e levante o queixo devagar.',
+    dica:'De frente para a câmera, incline a cabeça para trás, mostrando a região embaixo do queixo e o pescoço.' },
+  { n:8, id:'queixo-abaixado', nome:'Queixo abaixado', yaw:[-5,5], pitch:[-35,-25], roll:3, expr:'neutra', olhos:false, dist:[0.30,0.64],
+    fala:'Agora abaixe o queixo, olhando para o chão.',
+    dica:'Abaixe o queixo em direção ao peito, olhando para o chão, sem curvar os ombros.' },
+  { n:9, id:'vista-superior', nome:'Vista superior', yaw:[-5,5], pitch:[-50,-40], roll:3, expr:'neutra', olhos:false, dist:[0.28,0.64],
+    fala:'Abaixe um pouco mais e segure.',
+    dica:'Abaixe a cabeça um pouco mais, como se olhasse para os seus pés, e segure parada.' }
+];
+
+const CHIPS = [['angulo','Ângulo'],['distancia','Distância'],['centro','Centro'],['luz','Luz'],['foco','Foco'],['expressao','Expressão'],['olhos','Olhos']];
+const CONTORNO = [10,338,297,332,284,251,389,356,454,323,361,288,397,365,379,378,400,377,152,148,176,149,150,136,172,58,132,93,234,127,162,21,54,103,67,109];
+const DEG = 180/Math.PI;
+const $ = s => document.querySelector(s);
+const espera = ms => new Promise(r => setTimeout(r, ms));
+
+/* =====================================================================
+   ESTADO
+   ===================================================================== */
+const S = {
+  paciente:'', operador:'', modo:'consultorio', facing:'environment', voz:true,
+  consentimentoEm:null, inicio:null, fim:null,
+  fotos:Array(9).fill(null), puladas:new Set(), tentativasPulo:{}, fila:[], atual:0, refazendo:false,
+  inicioVista:0, dicaDada:false, pularOferecido:false, okDesde:null, capturando:false,
+  det:null, metricas:null, frame:0, stream:null, rodando:false, wakeLock:null,
+  sinal:{yaw:1, pitch:1, dYaw:0, dPitch:0},
+  ultimaCorrecao:0, ultimaFala:'', ultimaFalaEm:0, audio:null
+};
+
+/* =====================================================================
+   MODELO (MediaPipe Face Landmarker)
+   ===================================================================== */
+let landmarker = null, carregando = null;
+function statusModelo(texto, classe){
+  const el = $('#status-modelo'); el.className = 'status ' + (classe||''); el.lastElementChild.textContent = texto;
+}
+function carregarModelo(){
+  if (carregando) return carregando;
+  carregando = (async () => {
+    statusModelo('Preparando o rastreamento facial…');
+    const { FaceLandmarker, FilesetResolver } = await import(CONFIG.bundle);
+    const arquivos = await FilesetResolver.forVisionTasks(CONFIG.wasm);
+    const opcoes = {
+      baseOptions:{ modelAssetPath:CONFIG.modelo, delegate:'GPU' },
+      runningMode:'VIDEO', numFaces:1,
+      outputFaceBlendshapes:true, outputFacialTransformationMatrixes:true,
+      minFaceDetectionConfidence:0.5, minFacePresenceConfidence:0.5, minTrackingConfidence:0.5
+    };
+    try { landmarker = await FaceLandmarker.createFromOptions(arquivos, opcoes); }
+    catch (e) { opcoes.baseOptions.delegate = 'CPU'; landmarker = await FaceLandmarker.createFromOptions(arquivos, opcoes); }
+    statusModelo('Rastreamento facial pronto', 'pronto');
+  })();
+  carregando.catch(err => {
+    console.error(err); carregando = null;
+    statusModelo(SEM_ENDERECO
+      ? 'Esta visualização não tem endereço próprio. Abra o app pelo link https do Netlify para usar a câmera.'
+      : 'Não consegui carregar o rastreamento facial (' + (err && err.message ? err.message : err) + ').', 'erro');
+  });
+  return carregando;
+}
+
+/* =====================================================================
+   POSE DA CABEÇA
+   ===================================================================== */
+// Matriz de transformação facial (4x4, por colunas): frente do rosto = 3ª coluna.
+function poseDaMatriz(m){
+  const r00=m[0], r10=m[1], r02=m[8], r12=m[9], r22=m[10];
+  return {
+    yaw:   Math.atan2(-r02, r22) * DEG,
+    pitch: Math.atan2(r12, Math.hypot(r02, r22)) * DEG,
+    roll:  Math.atan2(r10, r00) * DEG
+  };
+}
+// Estimativa geométrica pelos pontos 3D: usada para confirmar o sentido (sinal) dos ângulos da matriz.
+function poseDosPontos(lm, W, H){
+  const P = i => [lm[i].x*W, lm[i].y*H, lm[i].z*W];
+  const a=P(234), b=P(454), t=P(10), q=P(152), oe=P(33), od=P(263);
+  const r=[b[0]-a[0], b[1]-a[1], b[2]-a[2]];   // lado a lado (direita da imagem)
+  const d=[q[0]-t[0], q[1]-t[1], q[2]-t[2]];   // testa → queixo (para baixo)
+  const f=[d[1]*r[2]-d[2]*r[1], d[2]*r[0]-d[0]*r[2], d[0]*r[1]-d[1]*r[0]]; // frente do rosto (d × r)
+  return {
+    yaw:   Math.atan2(-f[0], -f[2]) * DEG,
+    pitch: Math.atan2(-f[1], Math.hypot(f[0], f[2])) * DEG,
+    roll:  Math.atan2(od[1]-oe[1], od[0]-oe[0]) * DEG
+  };
+}
+function aprenderSinal(mat, geo){
+  const s = S.sinal;
+  if (Math.abs(geo.yaw) > 15 && Math.abs(mat.yaw) > 8){
+    const concorda = Math.sign(mat.yaw * s.yaw) === Math.sign(geo.yaw);
+    s.dYaw = concorda ? 0 : s.dYaw + 1;
+    if (s.dYaw >= 20){ s.yaw *= -1; s.dYaw = 0; }
+  }
+  if (Math.abs(geo.pitch) > 15 && Math.abs(mat.pitch) > 8){
+    const concorda = Math.sign(mat.pitch * s.pitch) === Math.sign(geo.pitch);
+    s.dPitch = concorda ? 0 : s.dPitch + 1;
+    if (s.dPitch >= 20){ s.pitch *= -1; s.dPitch = 0; }
+  }
+}
+function caixaDe(lm){
+  let x0=1, x1=0, y0=1, y1=0;
+  for (const p of lm){ if(p.x<x0)x0=p.x; if(p.x>x1)x1=p.x; if(p.y<y0)y0=p.y; if(p.y>y1)y1=p.y; }
+  return { x0, x1, y0, y1, nariz: lm[1].x };
+}
+
+/* =====================================================================
+   QUALIDADE DE IMAGEM
+   ===================================================================== */
+const cvAnalise = document.createElement('canvas');
+const ctxAnalise = cvAnalise.getContext('2d', { willReadFrequently:true });
+function cinzaDe(ctx, x, y, w, h){
+  const px = ctx.getImageData(x, y, w, h).data, g = new Float32Array(w*h);
+  for (let i=0, j=0; i<px.length; i+=4, j++) g[j] = 0.299*px[i] + 0.587*px[i+1] + 0.114*px[i+2];
+  return g;
+}
+function laplaciano(g, w, h){
+  let s=0, s2=0, n=0;
+  for (let y=1; y<h-1; y++) for (let x=1; x<w-1; x++){
+    const i=y*w+x, l = 4*g[i] - g[i-1] - g[i+1] - g[i-w] - g[i+w];
+    s+=l; s2+=l*l; n++;
+  }
+  if (!n) return 0; const m=s/n; return s2/n - m*m;
+}
+function recorte(caixa, W, H, folga=0.06){
+  const x = Math.max(0, Math.floor((caixa.x0-folga)*W)), y = Math.max(0, Math.floor((caixa.y0-folga)*H));
+  const x2 = Math.min(W, Math.ceil((caixa.x1+folga)*W)), y2 = Math.min(H, Math.ceil((caixa.y1+folga)*H));
+  return { x, y, w:Math.max(1,x2-x), h:Math.max(1,y2-y) };
+}
+function medirImagem(caixa){
+  const v = $('#video'); const vw=v.videoWidth, vh=v.videoHeight; if(!vw) return null;
+  const esc = 320/Math.max(vw, vh); const W=Math.round(vw*esc), H=Math.round(vh*esc);
+  if (cvAnalise.width!==W || cvAnalise.height!==H){ cvAnalise.width=W; cvAnalise.height=H; }
+  ctxAnalise.drawImage(v, 0, 0, W, H);
+  // Rosto sem a folga, para a luz não ser contaminada pelo fundo
+  const rc = recorte(caixa, W, H, 0);
+  if (rc.w < 12 || rc.h < 12) return null;
+  const g = cinzaDe(ctxAnalise, rc.x, rc.y, rc.w, rc.h);
+  let soma=0, estouro=0, se=0, ne=0, sd=0, nd=0;
+  const corte = Math.round(caixa.nariz*W) - rc.x;
+  for (let y=0; y<rc.h; y++) for (let x=0; x<rc.w; x++){
+    const val = g[y*rc.w+x]; soma+=val; if(val>250) estouro++;
+    if (x<corte){ se+=val; ne++; } else { sd+=val; nd++; }
+  }
+  const media = soma/g.length, me = ne?se/ne:media, md = nd?sd/nd:media;
+  return { brilho:media, estouro:estouro/g.length, difLados:Math.abs(me-md)/Math.max(1,(me+md)/2), nitidez:laplaciano(g, rc.w, rc.h) };
+}
+function nitidezDe(canvas, caixa){
+  const rc = recorte(caixa, canvas.width, canvas.height, 0);
+  const esc = Math.min(1, 256/Math.max(rc.w, rc.h));
+  const w = Math.max(8, Math.round(rc.w*esc)), h = Math.max(8, Math.round(rc.h*esc));
+  const c = document.createElement('canvas'); c.width=w; c.height=h;
+  const cx = c.getContext('2d', { willReadFrequently:true });
+  cx.drawImage(canvas, rc.x, rc.y, rc.w, rc.h, 0, 0, w, h);
+  return laplaciano(cinzaDe(cx, 0, 0, w, h), w, h);
+}
+
+/* =====================================================================
+   CHECAGENS
+   ===================================================================== */
+function avaliar(vista, d, m){
+  const r = {};
+  const marca = (id, ok, msg) => { r[id] = { id, ok, msg: ok ? null : msg }; };
+  if (!d){
+    CHIPS.forEach(([id]) => marca(id, false, null));
+    r.rosto = { id:'rosto', ok:false, msg:'Não encontrei o rosto. Centralize o rosto na moldura.' };
+    return r;
+  }
+  r.rosto = { id:'rosto', ok:true, msg:null };
+  const { yaw, pitch, roll } = d.pose;
+  let msgAng = null;
+  if (yaw < vista.yaw[0]) msgAng = 'Gire um pouco para a sua direita.';
+  else if (yaw > vista.yaw[1]) msgAng = 'Gire um pouco para a sua esquerda.';
+  else if (pitch < vista.pitch[0]) msgAng = 'Levante um pouco o queixo.';
+  else if (pitch > vista.pitch[1]) msgAng = 'Abaixe um pouco o queixo.';
+  else if (Math.abs(roll) > vista.roll) msgAng = 'Endireite a cabeça, sem inclinar para o ombro.';
+  marca('angulo', !msgAng, msgAng);
+
+  const [dmin, dmax] = vista.dist || CONFIG.distancia;
+  const altura = d.caixa.y1 - d.caixa.y0;
+  marca('distancia', altura >= dmin && altura <= dmax,
+    altura < dmin ? 'Aproxime um pouco o celular.' : 'Afaste um pouco o celular.');
+
+  const cx = (d.caixa.x0 + d.caixa.x1)/2, cy = (d.caixa.y0 + d.caixa.y1)/2;
+  marca('centro', Math.abs(cx-0.5) <= CONFIG.centro && Math.abs(cy-0.5) <= CONFIG.centro*1.5, 'Centralize o rosto na moldura.');
+
+  if (!m){ marca('luz', false, null); marca('foco', false, null); }
+  else {
+    const frontal = Math.abs((vista.yaw[0]+vista.yaw[1])/2) < 10;
+    let msgLuz = null;
+    if (m.brilho < CONFIG.brilho[0]) msgLuz = 'Está escuro. Vire-se de frente para a luz.';
+    else if (m.brilho > CONFIG.brilho[1] || m.estouro > CONFIG.estouro) msgLuz = 'A luz está forte demais no rosto. Afaste-se um pouco dela.';
+    else if (frontal && m.difLados > CONFIG.difLados) msgLuz = 'A luz está batendo de um lado só. Vire-se de frente para ela.';
+    marca('luz', !msgLuz, msgLuz);
+    marca('foco', m.nitidez >= CONFIG.foco, 'Fique parada um instante.');
+  }
+
+  const bs = d.bs, sorriso = ((bs.mouthSmileLeft||0) + (bs.mouthSmileRight||0))/2;
+  if (vista.expr === 'sorriso') marca('expressao', sorriso >= CONFIG.sorrisoAmplo, 'Agora um sorriso bem aberto.');
+  else marca('expressao', sorriso < CONFIG.sorrisoNeutro && (bs.jawOpen||0) < CONFIG.bocaAberta, 'Relaxe o rosto, sem sorrir.');
+
+  if (vista.olhos){
+    const piscada = Math.max(bs.eyeBlinkLeft||0, bs.eyeBlinkRight||0);
+    marca('olhos', piscada < CONFIG.olhoFechado, 'Mantenha os olhos abertos.');
+  } else marca('olhos', true, null);
+  return r;
+}
+const ORDEM = ['rosto','angulo','distancia','centro','luz','expressao','olhos','foco'];
+const primeiraFalha = r => ORDEM.map(k => r[k]).find(c => c && !c.ok && c.msg);
+const tudoOk = r => ORDEM.every(k => r[k] && r[k].ok);
+
+/* =====================================================================
+   VOZ E SOM
+   ===================================================================== */
+let vozPt = null;
+function escolherVoz(){
+  if (!('speechSynthesis' in window)) return;
+  const vs = speechSynthesis.getVoices();
+  const br = vs.filter(v => /pt[-_]BR/i.test(v.lang));
+  vozPt = br.find(v => /luciana|francisca|thalita|vit[oó]ria|female|feminina/i.test(v.name))
+       || br.find(v => /google/i.test(v.name)) || br[0] || vs.find(v => /^pt/i.test(v.lang)) || null;
+}
+if ('speechSynthesis' in window){ escolherVoz(); speechSynthesis.onvoiceschanged = escolherVoz; }
+function falar(texto, interromper=false){
+  S.ultimaFala = texto; S.ultimaFalaEm = performance.now();
+  if (!S.voz || !('speechSynthesis' in window)) return;
+  if (interromper) speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(texto);
+  u.lang = 'pt-BR'; if (vozPt) u.voice = vozPt; u.rate = 1.02; u.pitch = 1.04;
+  speechSynthesis.speak(u);
+}
+const falando = () => 'speechSynthesis' in window && (speechSynthesis.speaking || speechSynthesis.pending);
+function bip(){
+  try{
+    const ac = S.audio; if (!ac) return;
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.frequency.value = 880; g.gain.setValueAtTime(0.0001, ac.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.25, ac.currentTime+0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime+0.12);
+    o.connect(g).connect(ac.destination); o.start(); o.stop(ac.currentTime+0.13);
+  }catch(e){}
+}
+
+/* =====================================================================
+   CÂMERA
+   ===================================================================== */
+const video = $('#video');
+function pararStream(){ if (S.stream){ S.stream.getTracks().forEach(t => t.stop()); S.stream = null; } }
+async function abrirCamera(){
+  pararStream();
+  S.stream = await navigator.mediaDevices.getUserMedia({
+    audio:false, video:{ facingMode:{ ideal:S.facing }, width:{ ideal:1920 }, height:{ ideal:1080 } }
+  });
+  video.srcObject = S.stream; await video.play();
+  video.classList.toggle('espelhado', S.facing === 'user');
+}
+async function manterTelaAcesa(){
+  try { if ('wakeLock' in navigator) S.wakeLock = await navigator.wakeLock.request('screen'); } catch(e){}
+}
+function soltarTela(){ try { S.wakeLock && S.wakeLock.release(); } catch(e){} S.wakeLock = null; }
+
+function aviso(titulo, texto, botao){
+  $('#aviso-cap').hidden = !titulo;
+  if (!titulo) return;
+  $('#aviso-titulo').textContent = titulo; $('#aviso-texto').textContent = texto || '';
+  $('#aviso-giro').hidden = !!botao; $('#aviso-botao').hidden = !botao;
+}
+
+/* =====================================================================
+   DESENHO (moldura, contorno, barra de estabilidade, painel de pose)
+   ===================================================================== */
+const sob = $('#sobreposicao'), ctx = sob.getContext('2d');
+function ajustarCanvas(){
+  const dpr = Math.min(2, window.devicePixelRatio||1);
+  const w = sob.clientWidth, h = sob.clientHeight;
+  if (sob.width !== Math.round(w*dpr) || sob.height !== Math.round(h*dpr)){ sob.width = Math.round(w*dpr); sob.height = Math.round(h*dpr); }
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  return { w, h };
+}
+function mapear(v, cw, ch){
+  const vw = v.videoWidth, vh = v.videoHeight, esc = Math.max(cw/vw, ch/vh);
+  const ox = (cw - vw*esc)/2, oy = (ch - vh*esc)/2, espelho = S.facing === 'user';
+  return { esc, vh, f:(p) => { let x = p.x*vw*esc + ox; if (espelho) x = cw - x; return [x, p.y*vh*esc + oy]; } };
+}
+function desenhar(d, okTudo, progresso){
+  const { w, h } = ajustarCanvas(); ctx.clearRect(0,0,w,h);
+  if (!video.videoWidth) return;
+  const mp = mapear(video, w, h);
+  const vista = VISTAS[S.atual];
+  const [dmin, dmax] = vista.dist || CONFIG.distancia;
+  const ry = ((dmin+dmax)/2) * mp.vh * mp.esc * 0.62, rx = ry * 0.76;
+  const cx = w/2, cy = h*0.44;
+  // moldura oval
+  ctx.lineWidth = 2; ctx.setLineDash(okTudo ? [] : [7,7]);
+  ctx.strokeStyle = okTudo ? 'rgba(206,183,142,.95)' : 'rgba(249,245,237,.45)';
+  ctx.beginPath(); ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI*2); ctx.stroke(); ctx.setLineDash([]);
+  if (progresso > 0){
+    ctx.lineWidth = 5; ctx.strokeStyle = '#ceb78e'; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.ellipse(cx, cy, rx+9, ry+9, 0, -Math.PI/2, -Math.PI/2 + Math.PI*2*Math.min(1,progresso)); ctx.stroke();
+  }
+  // contorno do rosto detectado
+  if (d){
+    ctx.lineWidth = 1.5; ctx.strokeStyle = okTudo ? 'rgba(206,183,142,.85)' : 'rgba(206,183,142,.5)';
+    ctx.beginPath();
+    CONTORNO.forEach((i, k) => { const [x,y] = mp.f(d.lm[i]); k ? ctx.lineTo(x,y) : ctx.moveTo(x,y); });
+    ctx.closePath(); ctx.stroke();
+    ctx.fillStyle = 'rgba(249,245,237,.8)';
+    [1, 33, 263, 152].forEach(i => { const [x,y] = mp.f(d.lm[i]); ctx.beginPath(); ctx.arc(x,y,2,0,Math.PI*2); ctx.fill(); });
+  }
+}
+const pad = $('#pad'), pctx = pad.getContext('2d');
+function desenharPad(vista, pose){
+  const W = pad.width, H = pad.height, YMAX = 100, PMAX = 60;
+  const sx = S.facing === 'user' ? 1 : -1; // espelho: a direita da paciente aparece à direita da tela
+  const X = yaw => W/2 + sx * (yaw/YMAX) * (W/2 - 10), Y = pitch => H/2 - (pitch/PMAX) * (H/2 - 10);
+  pctx.clearRect(0,0,W,H);
+  pctx.strokeStyle = 'rgba(249,245,237,.16)'; pctx.lineWidth = 2;
+  pctx.beginPath(); pctx.moveTo(W/2,8); pctx.lineTo(W/2,H-8); pctx.moveTo(8,H/2); pctx.lineTo(W-8,H/2); pctx.stroke();
+  const xa = X(vista.yaw[0]), xb = X(vista.yaw[1]), ya = Y(vista.pitch[1]), yb = Y(vista.pitch[0]);
+  const rx = Math.min(xa,xb), rw = Math.max(6, Math.abs(xb-xa)), rh = Math.max(6, yb-ya);
+  pctx.fillStyle = 'rgba(206,183,142,.22)'; pctx.strokeStyle = 'rgba(206,183,142,.9)';
+  pctx.fillRect(rx, ya, rw, rh); pctx.strokeRect(rx, ya, rw, rh);
+  if (pose){
+    const px = Math.max(6, Math.min(W-6, X(pose.yaw))), py = Math.max(6, Math.min(H-6, Y(pose.pitch)));
+    pctx.fillStyle = '#f9f5ed'; pctx.beginPath(); pctx.arc(px, py, 7, 0, Math.PI*2); pctx.fill();
+  }
+}
+
+/* =====================================================================
+   INTERFACE DA CAPTURA
+   ===================================================================== */
+function montarChips(){
+  $('#chips').innerHTML = '';
+  CHIPS.forEach(([id, nome]) => { const s = document.createElement('span'); s.className='chip'; s.dataset.id=id; s.textContent=nome; $('#chips').append(s); });
+}
+function montarMiniaturas(){
+  const box = $('#miniaturas'); box.innerHTML = '';
+  VISTAS.forEach((v, i) => {
+    const m = document.createElement('div'); m.className = 'mini'; m.textContent = v.n; m.title = v.nome;
+    const f = S.fotos[i];
+    if (f){ m.classList.add('feita'); m.style.backgroundImage = `url(${f.url})`; }
+    if (S.puladas.has(i)) m.classList.add('pulada');
+    if (i === S.atual && S.rodando) m.classList.add('atual');
+    box.append(m);
+  });
+}
+const sinalTxt = n => (n>0?'+':n<0?'−':'') + Math.abs(Math.round(n)) + '°';
+function atualizarUI(r, d){
+  document.querySelectorAll('.chip').forEach(c => c.classList.toggle('ok', !!(r[c.dataset.id] && r[c.dataset.id].ok)));
+  const falha = primeiraFalha(r);
+  $('#correcao').textContent = S.capturando ? '' : (falha ? falha.msg : (d ? 'Perfeito, fique parada…' : ''));
+  $('#hud-num').textContent = d
+    ? `yaw ${sinalTxt(d.pose.yaw)} · pitch ${sinalTxt(d.pose.pitch)} · roll ${sinalTxt(d.pose.roll)}`
+    : 'rosto não encontrado';
+  desenharPad(VISTAS[S.atual], d && d.pose);
+}
+
+/* =====================================================================
+   LAÇO DE DETECÇÃO
+   ===================================================================== */
+let ultimoTs = -1;
+function laco(){
+  if (!S.rodando) return;
+  requestAnimationFrame(laco);
+  if (video.readyState < 2 || !landmarker || !video.videoWidth) return;
+  const agora = performance.now(); if (agora <= ultimoTs) return; ultimoTs = agora;
+  let res; try { res = landmarker.detectForVideo(video, agora); } catch(e){ return; }
+  processar(res, agora);
+}
+function processar(res, agora){
+  const vista = VISTAS[S.atual], W = video.videoWidth, H = video.videoHeight;
+  let d = null;
+  if (res && res.faceLandmarks && res.faceLandmarks.length){
+    const lm = res.faceLandmarks[0];
+    const bs = {}; (res.faceBlendshapes?.[0]?.categories || []).forEach(c => bs[c.categoryName] = c.score);
+    const geo = poseDosPontos(lm, W, H);
+    const mat = res.facialTransformationMatrixes?.[0]?.data;
+    let pose;
+    if (mat){ const pm = poseDaMatriz(mat); aprenderSinal(pm, geo); pose = { yaw:pm.yaw*S.sinal.yaw, pitch:pm.pitch*S.sinal.pitch, roll:pm.roll }; }
+    else pose = geo;
+    d = { lm, bs, pose, caixa:caixaDe(lm) };
+  }
+  S.det = d;
+  if (d && (S.frame++ % 3 === 0)) S.metricas = medirImagem(d.caixa);
+  if (!d) S.metricas = null;
+  const r = avaliar(vista, d, S.metricas);
+  const ok = tudoOk(r);
+  if (S.capturando){ desenhar(d, true, 1); return; }
+  if (ok){ if (!S.okDesde) S.okDesde = agora; } else S.okDesde = null;
+  const prog = S.okDesde ? (agora - S.okDesde)/CONFIG.estabilidadeMs : 0;
+  desenhar(d, ok, prog);
+  if (S.frame % 2 === 0 || !d) atualizarUI(r, d);
+  if (ok && prog >= 1){ capturar(false); return; }
+  if (!ok) corrigir(r, agora);
+  temporizadores(agora);
+}
+function corrigir(r, agora){
+  const falha = primeiraFalha(r); if (!falha) return;
+  if (falha.id === 'foco') return;                         // tremor costuma passar sozinho
+  if (agora - S.inicioVista < 3500) return;                // dá tempo para a instrução principal
+  if (agora - S.ultimaCorrecao < CONFIG.intervaloCorrecaoMs || falando()) return;
+  if (falha.msg === S.ultimaFala && agora - S.ultimaFalaEm < 6000) return;
+  S.ultimaCorrecao = agora; falar(falha.msg);
+}
+function temporizadores(agora){
+  const t = agora - S.inicioVista, vista = VISTAS[S.atual];
+  if (t > CONFIG.dicaMs && !S.dicaDada){ S.dicaDada = true; $('#instrucao').textContent = vista.dica; falar(vista.dica, true); }
+  if (t > CONFIG.pularMs && !S.pularOferecido){
+    S.pularOferecido = true; $('#pular').hidden = false;
+    falar('Se preferir, toque em pular. Voltamos a esta foto no final.');
+  }
+}
+
+/* =====================================================================
+   FLUXO DAS VISTAS
+   ===================================================================== */
+function iniciarVista(i, interromper=true){
+  S.atual = i; S.inicioVista = performance.now(); S.dicaDada = false; S.pularOferecido = false; S.okDesde = null;
+  const v = VISTAS[i], feitas = S.fotos.filter(Boolean).length;
+  $('#vista-contador').textContent = S.refazendo ? `Refazendo a vista ${v.n}` : `Vista ${v.n} de 9 · ${feitas} prontas`;
+  $('#vista-nome').textContent = v.nome;
+  $('#instrucao').textContent = v.fala; $('#correcao').textContent = '';
+  $('#pular').hidden = true;
+  montarMiniaturas();
+  falar(v.fala, interromper);
+}
+function proxima(){
+  if (S.fila.length) iniciarVista(S.fila.shift());
+  else finalizar();
+}
+async function capturar(manual){
+  if (S.capturando) return;
+  S.capturando = true; S.okDesde = null;
+  const idx = S.atual, vista = VISTAS[idx];
+  const W = video.videoWidth, H = video.videoHeight;
+  if (!W){ S.capturando = false; return; }
+  let melhor = null, melhorN = -1, detMelhor = S.det;
+  for (let k = 0; k < 3; k++){
+    const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+    cv.getContext('2d').drawImage(video, 0, 0, W, H);
+    const det = S.det;
+    const n = det ? nitidezDe(cv, det.caixa) : 0;
+    if (n > melhorN){ melhorN = n; melhor = cv; detMelhor = det; }
+    if (k < 2) await espera(70);
+  }
+  const r = avaliar(vista, detMelhor, S.metricas);
+  // Checagem final na resolução máxima (só no disparo automático)
+  if (!manual && (!detMelhor || !r.angulo.ok || melhorN < CONFIG.foco * 0.8)){
+    S.capturando = false; S.inicioVista = Math.min(S.inicioVista, performance.now() - 3500);
+    $('#correcao').textContent = 'Quase. Vamos repetir esta foto, fique parada.';
+    falar('Quase. Vamos repetir, fique parada.', true);
+    return;
+  }
+  const flash = $('#flash'); flash.classList.add('on'); requestAnimationFrame(() => requestAnimationFrame(() => flash.classList.remove('on')));
+  bip();
+  const blob = await new Promise(res => melhor.toBlob(res, 'image/jpeg', 0.95));
+  const r4 = n => Math.round(n*10000)/10000, r1 = n => Math.round(n*10)/10;
+  const checagens = {}; ORDEM.forEach(k => { if (r[k]) checagens[k] = r[k].ok; });
+  const dados = {
+    vista: vista.n, id: vista.id, nome: vista.nome, capturadaEm: new Date().toISOString(),
+    disparo: manual ? 'manual' : 'automatico', largura: W, altura: H,
+    pose: detMelhor ? { yaw:r1(detMelhor.pose.yaw), pitch:r1(detMelhor.pose.pitch), roll:r1(detMelhor.pose.roll) } : null,
+    alvo: { yaw: vista.yaw, pitch: vista.pitch, rollMax: vista.roll },
+    checagens,
+    metricas: S.metricas ? { brilho:r1(S.metricas.brilho), estouro:r4(S.metricas.estouro), difLados:r4(S.metricas.difLados), nitidezFoto:r1(melhorN) } : { nitidezFoto:r1(melhorN) },
+    expressao: detMelhor ? { sorriso:r4(((detMelhor.bs.mouthSmileLeft||0)+(detMelhor.bs.mouthSmileRight||0))/2), bocaAberta:r4(detMelhor.bs.jawOpen||0), piscada:r4(Math.max(detMelhor.bs.eyeBlinkLeft||0, detMelhor.bs.eyeBlinkRight||0)) } : null,
+    pontos: detMelhor ? detMelhor.lm.map(p => [r4(p.x), r4(p.y), r4(p.z)]) : null
+  };
+  if (S.fotos[idx]) URL.revokeObjectURL(S.fotos[idx].url);
+  S.fotos[idx] = { blob, url: URL.createObjectURL(blob), dados };
+  S.puladas.delete(idx); delete S.tentativasPulo[idx];
+  montarMiniaturas();
+  $('#correcao').textContent = 'Foto salva.';
+  falar('ok', true);
+  await espera(700);
+  S.capturando = false;
+  if (S.refazendo){ S.refazendo = false; encerrarCaptura(); return; }
+  proxima();
+}
+function pular(){
+  const idx = S.atual;
+  if (S.refazendo){ S.refazendo = false; encerrarCaptura(); return; }
+  S.tentativasPulo[idx] = (S.tentativasPulo[idx]||0) + 1;
+  if (S.tentativasPulo[idx] < 2) S.fila.push(idx); else S.puladas.add(idx);
+  falar('Tudo bem, vamos para a próxima.', true);
+  proxima();
+}
+function finalizar(){
+  falar('Pronto, suas fotos estão salvas. Obrigada!', true);
+  encerrarCaptura();
+}
+function encerrarCaptura(){
+  S.rodando = false; S.fim = new Date(); pararStream(); soltarTela();
+  mostrar('revisao'); montarRevisao();
+}
+
+async function iniciarCaptura(fila, refazendo=false){
+  // Som e voz precisam nascer do toque (iOS)
+  try { S.audio = S.audio || new (window.AudioContext || window.webkitAudioContext)(); S.audio.resume(); } catch(e){}
+  S.fila = fila.slice(); S.refazendo = refazendo;
+  const primeira = S.fila.shift();
+  if (!refazendo && S.fotos.every(f => !f)) falar('Olá, eu sou a Vick. Vou te ajudar a fazer as fotos da sua avaliação facial. Leva menos de dois minutos.', true);
+  mostrar('captura'); montarChips(); S.atual = primeira; montarMiniaturas();
+  $('#btn-voz').setAttribute('aria-pressed', String(S.voz));
+  aviso('Preparando o rastreamento facial…', 'Isso leva alguns segundos na primeira vez.');
+  try { await carregarModelo(); }
+  catch(e){
+    const local = SEM_ENDERECO;
+    aviso('Não consegui carregar o rastreamento facial',
+      (local ? 'O app foi aberto direto do arquivo. Ele precisa estar publicado num endereço https (por exemplo, Netlify). '
+             : 'Confira a internet e tente de novo. ') + 'Detalhe técnico: ' + (e && e.message ? e.message : e), true); $('#aviso-botao').onclick = () => iniciarCaptura([primeira, ...S.fila], refazendo); return; }
+  aviso('Abrindo a câmera…', '');
+  try { await abrirCamera(); }
+  catch(e){
+    console.error(e);
+    aviso('Não consegui abrir a câmera', 'Permita o acesso à câmera nas configurações do navegador e toque em Tentar de novo. O app precisa estar aberto em um endereço https.', true);
+    $('#aviso-botao').onclick = () => iniciarCaptura([primeira, ...S.fila], refazendo); return;
+  }
+  aviso(null);
+  await manterTelaAcesa();
+  S.rodando = true; ultimoTs = -1;
+  iniciarVista(primeira, false);
+  laco();
+}
+
+/* =====================================================================
+   REVISÃO E PACOTE
+   ===================================================================== */
+const dataLocal = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+const slug = s => s.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+function statusVista(i){ return S.fotos[i] ? (S.fotos[i].dados.disparo === 'manual' ? 'manual' : 'aceita') : (S.puladas.has(i) ? 'pulada' : 'pendente'); }
+const ROTULO = { aceita:'Aceita', manual:'Disparo manual', pulada:'Pulada', pendente:'Pendente' };
+function montarRevisao(){
+  const feitas = S.fotos.filter(Boolean).length;
+  $('#rev-titulo').textContent = feitas === 9 ? 'Nove vistas prontas' : `${feitas} de 9 vistas prontas`;
+  const dur = S.inicio && S.fim ? Math.round((S.fim - S.inicio)/1000) : null;
+  $('#rev-resumo').innerHTML = '';
+  [['Paciente', S.paciente], ['Profissional', S.operador || '—'], ['Data', dataLocal(S.inicio || new Date()).split('-').reverse().join('/')],
+   ['Duração', dur != null ? `${Math.floor(dur/60)} min ${String(dur%60).padStart(2,'0')} s` : '—'],
+   ['Câmera', S.facing === 'user' ? 'frontal' : 'traseira']]
+    .forEach(([k, v]) => { const s = document.createElement('span'); s.append(k + ': '); const b = document.createElement('b'); b.textContent = v; s.append(b); $('#rev-resumo').append(s); });
+  const g = $('#grade'); g.innerHTML = '';
+  VISTAS.forEach((v, i) => {
+    const f = S.fotos[i], st = statusVista(i);
+    const card = document.createElement('article'); card.className = 'foto';
+    const im = document.createElement('div'); im.className = 'img';
+    if (f){ const img = document.createElement('img'); img.src = f.url; img.alt = `Vista ${v.n}: ${v.nome}`; im.append(img); }
+    else im.textContent = 'Sem foto';
+    const info = document.createElement('div'); info.className = 'info';
+    info.innerHTML = `<div class="titulo"><span class="n">${v.n}</span><strong></strong></div><span class="selo-st ${st}">${ROTULO[st]}</span><span class="meta"></span>`;
+    info.querySelector('strong').textContent = v.nome;
+    info.querySelector('.meta').textContent = f && f.dados.pose
+      ? `yaw ${sinalTxt(f.dados.pose.yaw)} · pitch ${sinalTxt(f.dados.pose.pitch)} · roll ${sinalTxt(f.dados.pose.roll)}`
+      : `alvo: yaw ${v.yaw[0]}° a ${v.yaw[1]}° · pitch ${v.pitch[0]}° a ${v.pitch[1]}°`;
+    const b = document.createElement('button'); b.className = 'refazer'; b.textContent = f ? 'Refazer esta vista' : 'Capturar esta vista';
+    b.onclick = () => iniciarCaptura([i], true);
+    info.append(b);
+    card.append(im, info); g.append(card);
+  });
+  $('#continuar').hidden = feitas === 9;
+  $('#baixar').disabled = feitas === 0;
+}
+async function baixarPacote(){
+  const btn = $('#baixar');
+  if (!window.JSZip){ btn.textContent = 'Sem internet para gerar o .zip. Recarregue a página.'; return; } btn.disabled = true; btn.textContent = 'Preparando o pacote…';
+  try{
+    const zip = new JSZip(), data = dataLocal(S.inicio || new Date()), base = `${data}_${slug(S.paciente) || 'paciente'}`;
+    const fotos = zip.folder('fotos'), dados = zip.folder('dados');
+    S.fotos.forEach((f, i) => {
+      if (!f) return;
+      const nome = `${base}_vista-${VISTAS[i].n}`;
+      fotos.file(nome + '.jpg', f.blob);
+      dados.file(nome + '_pontos.json', JSON.stringify({ vista:VISTAS[i].n, nome:VISTAS[i].nome, formato:'[x, y, z] normalizados (MediaPipe Face Landmarker, 478 pontos)', pontos:f.dados.pontos }));
+    });
+    const sessao = {
+      app:'Photocheck · Avaliação Completa', versaoApp:CONFIG.versao, paciente:S.paciente, profissional:S.operador || null,
+      data, inicio:S.inicio && S.inicio.toISOString(), fim:S.fim && S.fim.toISOString(),
+      modo:S.modo, camera:S.facing === 'user' ? 'frontal' : 'traseira', aparelho:navigator.userAgent,
+      consentimentoLGPD:{ aceito:true, registradoEm:S.consentimentoEm },
+      configuracao:{ ...CONFIG, bundle:undefined, wasm:undefined, modelo:undefined },
+      vistas: VISTAS.map((v, i) => { const f = S.fotos[i]; const { pontos, ...resto } = f ? f.dados : {}; return { vista:v.n, nome:v.nome, status:statusVista(i), arquivo: f ? `fotos/${base}_vista-${v.n}.jpg` : null, ...resto }; })
+    };
+    zip.file(`${base}_sessao.json`, JSON.stringify(sessao, null, 2));
+    const blob = await zip.generateAsync({ type:'blob' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `${base}_avaliacao-facial.zip`;
+    document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 30000);
+  } finally { btn.disabled = false; btn.textContent = 'Baixar pacote da sessão (.zip)'; }
+}
+
+/* =====================================================================
+   TELAS E EVENTOS
+   ===================================================================== */
+function mostrar(t){
+  $('#tela-inicio').hidden = t !== 'inicio'; $('#tela-captura').hidden = t !== 'captura'; $('#tela-revisao').hidden = t !== 'revisao';
+  if (t !== 'captura') window.scrollTo(0, 0);
+}
+function validar(){ $('#iniciar').disabled = !($('#paciente').value.trim() && $('#consentimento').checked); }
+['#paciente', '#consentimento'].forEach(s => $(s).addEventListener('input', validar));
+$('#consentimento').addEventListener('change', validar);
+
+const ro = $('#roteiro');
+VISTAS.forEach(v => {
+  const li = document.createElement('li');
+  const alvo = v.yaw[0] >= 0 && v.yaw[1] > 10 ? `yaw +${v.yaw[0] === 65 ? '65 a 90' : (v.yaw[0]+v.yaw[1])/2}°`
+    : v.yaw[1] <= 0 && v.yaw[0] < -10 ? `yaw −${v.yaw[1] === -65 ? '65 a 90' : -(v.yaw[0]+v.yaw[1])/2}°`
+    : (v.pitch[0] + v.pitch[1]) / 2 !== 0 ? `pitch ${(v.pitch[0]+v.pitch[1])/2 > 0 ? '+' : '−'}${Math.abs((v.pitch[0]+v.pitch[1])/2)}°` : '0°';
+  li.innerHTML = `<span class="n">${v.n}</span><span></span><span class="ang">${alvo}</span>`;
+  li.children[1].textContent = v.nome; ro.append(li);
+});
+
+$('#iniciar').addEventListener('click', () => {
+  S.paciente = $('#paciente').value.trim(); S.operador = $('#operador').value.trim();
+  S.modo = document.querySelector('input[name=modo]:checked').value;
+  S.facing = S.modo === 'casa' ? 'user' : 'environment';
+  S.voz = $('#voz').checked; S.consentimentoEm = new Date().toISOString(); S.inicio = new Date(); S.fim = null;
+  S.fotos.forEach(f => f && URL.revokeObjectURL(f.url));
+  S.fotos = Array(9).fill(null); S.puladas = new Set(); S.tentativasPulo = {};
+  iniciarCaptura([0,1,2,3,4,5,6,7,8]);
+});
+$('#encerrar').addEventListener('click', () => { if ('speechSynthesis' in window) speechSynthesis.cancel(); S.refazendo = false; encerrarCaptura(); });
+$('#pular').addEventListener('click', pular);
+$('#disparo-manual').addEventListener('click', () => capturar(true));
+$('#btn-voz').addEventListener('click', e => {
+  S.voz = !S.voz; e.currentTarget.setAttribute('aria-pressed', String(S.voz));
+  e.currentTarget.setAttribute('aria-label', S.voz ? 'Voz ligada' : 'Voz desligada');
+  if (!S.voz && 'speechSynthesis' in window) speechSynthesis.cancel();
+});
+$('#trocar-camera').addEventListener('click', async () => {
+  S.facing = S.facing === 'user' ? 'environment' : 'user';
+  try { await abrirCamera(); } catch(e){ S.facing = S.facing === 'user' ? 'environment' : 'user'; try { await abrirCamera(); } catch(_){} }
+});
+$('#baixar').addEventListener('click', baixarPacote);
+$('#continuar').addEventListener('click', () => {
+  const pend = VISTAS.map((_, i) => i).filter(i => !S.fotos[i]);
+  S.puladas = new Set(); S.tentativasPulo = {};
+  if (pend.length) iniciarCaptura(pend);
+});
+$('#nova').addEventListener('click', () => { $('#paciente').value = ''; $('#consentimento').checked = false; validar(); mostrar('inicio'); });
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && S.rodando) manterTelaAcesa(); });
+
+// Começa a baixar o modelo enquanto o formulário é preenchido
+carregarModelo().catch(() => {});
+
+// Exposto para testes de calibração no console
+window.__df = { CONFIG, VISTAS, poseDaMatriz, poseDosPontos, avaliar, S };
+</script>
+</body>
+</html>
