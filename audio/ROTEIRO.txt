@@ -1,0 +1,121 @@
+ROTEIRO DE ÁUDIOS DA VICK — Photocheck · Avaliação Completa
+
+Como gravar: no ElevenLabs, use a voz da Vick. Gere cada frase separadamente, baixe em MP3 e salve com o nome do arquivo exatamente como está abaixo (minúsculas, com hífen).
+Depois mande os MP3 aqui no chat. Total: 39 arquivos.
+
+01. abertura.mp3
+    Olá, eu sou a Vick. Vou te ajudar a fazer as fotos da sua avaliação facial. Leva menos de dois minutos.
+
+02. vista-1-fala.mp3
+    Olhe para a câmera, com o rosto relaxado.
+
+03. vista-1-dica.mp3
+    Olhe direto para a lente, com o queixo reto, como se olhasse para o horizonte. Lábios relaxados, sem sorrir.
+
+04. vista-2-fala.mp3
+    Agora um sorriso bem aberto.
+
+05. vista-2-dica.mp3
+    Sorria mostrando os dentes, sem fechar os olhos, e mantenha a cabeça reta.
+
+06. vista-3-fala.mp3
+    Gire devagar para a sua direita.
+
+07. vista-3-dica.mp3
+    Gire só a cabeça para a sua direita, até a ponta do nariz quase encostar no contorno da bochecha. Os ombros ficam parados.
+
+08. vista-4-fala.mp3
+    Agora devagar para a sua esquerda, até o mesmo ponto.
+
+09. vista-4-dica.mp3
+    Gire só a cabeça para a sua esquerda, até a ponta do nariz quase encostar no contorno da bochecha. Os ombros ficam parados.
+
+10. vista-5-fala.mp3
+    Continue girando para a sua direita, até ficar de perfil.
+
+11. vista-5-dica.mp3
+    Gire até o perfil completo, de forma que a câmera veja só um lado do rosto. Olhe para um ponto fixo na parede.
+
+12. vista-6-fala.mp3
+    Agora o outro perfil, para a sua esquerda.
+
+13. vista-6-dica.mp3
+    Gire até o outro perfil completo, de forma que a câmera veja só um lado do rosto. Olhe para um ponto fixo na parede.
+
+14. vista-7-fala.mp3
+    Volte de frente e levante o queixo devagar.
+
+15. vista-7-dica.mp3
+    De frente para a câmera, incline a cabeça para trás, mostrando a região embaixo do queixo e o pescoço.
+
+16. vista-8-fala.mp3
+    Agora abaixe o queixo, olhando para o chão.
+
+17. vista-8-dica.mp3
+    Abaixe o queixo em direção ao peito, olhando para o chão, sem curvar os ombros.
+
+18. vista-9-fala.mp3
+    Abaixe um pouco mais e segure.
+
+19. vista-9-dica.mp3
+    Abaixe a cabeça um pouco mais, como se olhasse para os seus pés, e segure parada.
+
+20. ok.mp3
+    ok
+
+21. repetir.mp3
+    Quase. Vamos repetir, fique parada.
+
+22. oferta-pular.mp3
+    Se preferir, toque em pular. Voltamos a esta foto no final.
+
+23. pulou.mp3
+    Tudo bem, vamos para a próxima.
+
+24. encerramento.mp3
+    Pronto, suas fotos estão salvas. Obrigada!
+
+25. corr-rosto.mp3
+    Não encontrei o rosto. Centralize o rosto na moldura.
+
+26. corr-direita.mp3
+    Gire um pouco para a sua direita.
+
+27. corr-esquerda.mp3
+    Gire um pouco para a sua esquerda.
+
+28. corr-levante.mp3
+    Levante um pouco o queixo.
+
+29. corr-abaixe.mp3
+    Abaixe um pouco o queixo.
+
+30. corr-inclinacao.mp3
+    Endireite a cabeça, sem inclinar para o ombro.
+
+31. corr-aproxime.mp3
+    Aproxime um pouco o celular.
+
+32. corr-afaste.mp3
+    Afaste um pouco o celular.
+
+33. corr-centralize.mp3
+    Centralize o rosto na moldura.
+
+34. corr-escuro.mp3
+    Está escuro. Vire-se de frente para a luz.
+
+35. corr-luz-forte.mp3
+    A luz está forte demais no rosto. Afaste-se um pouco dela.
+
+36. corr-luz-lado.mp3
+    A luz está batendo de um lado só. Vire-se de frente para ela.
+
+37. corr-parada.mp3
+    Fique parada um instante.
+
+38. corr-relaxe.mp3
+    Relaxe o rosto, sem sorrir.
+
+39. corr-olhos.mp3
+    Mantenha os olhos abertos.
