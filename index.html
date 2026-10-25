@@ -92,6 +92,11 @@ h2{font-family:var(--f-display);font-weight:400;font-size:22px;margin:0 0 4px}
 .topo .vista-titulo{flex:1;min-width:0}
 .topo .vista-titulo small{display:block;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ouro)}
 .topo .vista-titulo strong{font-family:var(--f-display);font-weight:400;font-size:20px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vick{display:inline-flex;align-items:center;gap:6px;margin-top:4px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ouro)}
+.vick::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--ouro);opacity:.5}
+.vick.falando::before{opacity:1;animation:pulsa 1s ease-in-out infinite}
+@keyframes pulsa{50%{transform:scale(1.6);opacity:.4}}
+@media (prefers-reduced-motion: reduce){.vick.falando::before{animation:none}}
 .ic{width:44px;height:44px;border-radius:50%;border:1px solid rgba(249,245,237,.28);background:rgba(10,19,16,.45);color:var(--cap-fg);display:grid;place-items:center;flex:none}
 .ic svg{width:20px;height:20px}
 .ic[aria-pressed="false"]{opacity:.55}
@@ -175,6 +180,7 @@ h2{font-family:var(--f-display);font-weight:400;font-size:22px;margin:0 0 4px}
       <label class="modo"><input type="radio" name="modo" id="modo-casa" value="casa"><strong>Em casa</strong><span>Câmera frontal, a paciente se vê e a voz conduz</span></label>
     </div>
     <label class="chave"><input type="checkbox" id="voz" checked> Voz guiando a paciente</label>
+    <label class="chave" id="linha-conversa" hidden><input type="checkbox" id="conversa" checked> Vick em conversa livre (usa o microfone e a internet)</label>
   </section>
 
   <section class="bloco" aria-labelledby="t-prep">
@@ -217,7 +223,7 @@ h2{font-family:var(--f-display);font-weight:400;font-size:22px;margin:0 0 4px}
     <button class="ic" id="encerrar" aria-label="Encerrar e revisar">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
     </button>
-    <div class="vista-titulo"><small id="vista-contador">Vista 1 de 9</small><strong id="vista-nome">Frontal repouso</strong></div>
+    <div class="vista-titulo"><small id="vista-contador">Vista 1 de 9</small><strong id="vista-nome">Frontal repouso</strong><span class="vick" id="vick-status" hidden>Vick ouvindo</span></div>
     <button class="ic" id="btn-voz" aria-label="Voz ligada" aria-pressed="true">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16.5 8.5a5 5 0 010 7"/></svg>
     </button>
@@ -287,6 +293,8 @@ const CONFIG = {
   bundle: params.get('bundle') || caminho('./mediapipe/vision_bundle.js'),
   wasm:   params.get('wasm')   || caminho('./mediapipe/wasm'),
   modelo: params.get('modelo') || caminho('./modelo/face_landmarker.task'),
+  // ID do agente "Vick · Photocheck" no ElevenLabs (público). Vazio = Vick só com voz guiada, sem conversa.
+  agenteVick: params.get('agente') || '',
   estabilidadeMs: 500,      // pose dentro da tolerância por 0,5 s
   dicaMs: 20000,            // instrução detalhada após 20 s
   pularMs: 40000,           // oferece pular após 40 s
@@ -579,9 +587,74 @@ function falarSintetico(texto){
   u.lang = 'pt-BR'; if (vozPt) u.voice = vozPt; u.rate = 1.02; u.pitch = 1.04;
   speechSynthesis.speak(u);
 }
+/* ---------- Vick em conversa livre (agente de voz do ElevenLabs) ----------
+   O app não fala sozinho: ele avisa a Vick do que está acontecendo com mensagens [ESTADO]
+   e ela conversa com a paciente. Se a conexão cair, volta para os áudios fixos. */
+const VICK = {
+  conv:null, ativa:false, falandoAgora:false, posicaoAvisada:-1,
+  carregarSDK(){
+    if (window.ElevenLabsClient) return Promise.resolve();
+    return new Promise((ok, erro) => { const s = document.createElement('script'); s.src = './lib/elevenlabs-client-1.27.0.js'; s.onload = ok; s.onerror = () => erro(new Error('SDK da Vick não carregou')); document.head.append(s); });
+  },
+  async iniciar(){
+    if (!CONFIG.agenteVick || this.conv) return;
+    statusVick('Conectando a Vick…');
+    try{
+      await this.carregarSDK();
+      this.conv = await ElevenLabsClient.Conversation.startSession({
+        agentId: CONFIG.agenteVick, connectionType:'websocket',
+        onConnect: () => { this.ativa = true; statusVick('Vick ouvindo'); },
+        onDisconnect: () => { this.ativa = false; this.conv = null; this.falandoAgora = false; statusVick(null); },
+        onError: (e) => { console.error('Vick', e); },
+        onModeChange: ({ mode }) => { this.falandoAgora = mode === 'speaking'; statusVick(mode === 'speaking' ? 'Vick falando' : 'Vick ouvindo'); }
+      });
+      this.ativa = true;
+    } catch(e){
+      console.error(e); this.conv = null; this.ativa = false;
+      statusVick(null); $('#correcao').textContent = 'A Vick não conectou. Sigo com a voz guiada.';
+    }
+  },
+  enviar(msg){ if (!this.ativa || !this.conv) return; try { this.conv.sendUserMessage(msg); } catch(e){ console.error(e); } },
+  contexto(msg){ if (!this.ativa || !this.conv) return; try { this.conv.sendContextualUpdate(msg); } catch(e){} },
+  async encerrar(depoisMs=0){
+    const c = this.conv; if (!c) return;
+    if (depoisMs) await espera(depoisMs);
+    try { await c.endSession(); } catch(e){}
+    this.conv = null; this.ativa = false; statusVick(null);
+  }
+};
+// Espera a Vick conectar e terminar a saudação (no máximo ~14 s), para não atropelar a fala dela
+async function esperarSaudacao(){
+  const t0 = performance.now(); let falou = false;
+  while (performance.now() - t0 < 14000){
+    if (VICK.falandoAgora) falou = true;
+    if (!VICK.conv && performance.now() - t0 > 6000) return;      // não conectou: segue sem ela
+    if (falou && !VICK.falandoAgora) { await espera(1200); if (!VICK.falandoAgora) return; }
+    await espera(200);
+  }
+}
+function statusVick(t){ const el = $('#vick-status'); if (!el) return; el.hidden = !t; if (t){ el.textContent = t; el.classList.toggle('falando', /falando/.test(t)); } }
+// Traduz a frase fixa do roteiro em uma mensagem de estado para a Vick
+function estadoParaVick(texto){
+  const id = ID_DA_FRASE.get(texto) || '';
+  const v = VISTAS[S.atual];
+  let m;
+  if (id === 'abertura' || id === 'ok' || id === 'pulou') return null;
+  if ((m = id.match(/^vista-(\d)-fala$/))){
+    const feitas = S.fotos.filter(Boolean).length;
+    return `[ESTADO] ${feitas ? 'Foto anterior aceita. ' : ''}Nova posição: vista ${v.n} de 9, ${v.nome}. Oriente a paciente: ${texto}`;
+  }
+  if (/^vista-\d-dica$/.test(id)) return `[ESTADO] A paciente está com dificuldade nesta posição há 20 segundos. Explique com mais calma: ${texto}`;
+  if (id === 'repetir') return '[ESTADO] A foto não saiu boa. Peça para repetir e ficar parada.';
+  if (id === 'oferta-pular') return '[ESTADO] Ofereça pular esta posição. Ela volta no final.';
+  if (id === 'encerramento') return '[ESTADO] Todas as fotos concluídas. Agradeça e se despeça em uma frase.';
+  if (id.startsWith('corr-')) return VICK.falandoAgora ? null : `[ESTADO] Corrigir: ${texto}`;
+  return null;
+}
 function falar(texto, interromper=false){
   S.ultimaFala = texto; S.ultimaFalaEm = performance.now();
   if (!S.voz) return;
+  if (VICK.ativa){ const msg = estadoParaVick(texto); if (msg) VICK.enviar(msg); return; }
   if (interromper){ filaFala = null; player.pause(); if ('speechSynthesis' in window) speechSynthesis.cancel(); }
   else if (!player.paused){ filaFala = texto; return; } // espera a fala atual terminar
   tocar(texto);
@@ -601,7 +674,7 @@ function tocar(texto){
   player.src = `./audio/${id}.mp3`;
   player.play().catch(reserva);
 }
-const falando = () => !player.paused || ('speechSynthesis' in window && (speechSynthesis.speaking || speechSynthesis.pending));
+const falando = () => VICK.falandoAgora || !player.paused || ('speechSynthesis' in window && (speechSynthesis.speaking || speechSynthesis.pending));
 function bip(){
   try{
     const ac = S.audio; if (!ac) return;
@@ -759,6 +832,7 @@ function processar(res, agora){
   const ok = tudoOk(r);
   if (S.capturando){ desenhar(d, true, 1); return; }
   if (ok){ if (!S.okDesde) S.okDesde = agora; } else S.okDesde = null;
+  if (ok && VICK.ativa && VICK.posicaoAvisada !== S.atual){ VICK.posicaoAvisada = S.atual; VICK.contexto('[ESTADO] A paciente está na posição certa. A foto vai sair sozinha; se falar, peça só para ficar parada.'); }
   const prog = S.okDesde ? (agora - S.okDesde)/CONFIG.estabilidadeMs : 0;
   desenhar(d, ok, prog);
   if (S.frame % 2 === 0 || !d) atualizarUI(r, d);
@@ -770,7 +844,8 @@ function corrigir(r, agora){
   const falha = primeiraFalha(r); if (!falha) return;
   if (falha.id === 'foco') return;                         // tremor costuma passar sozinho
   if (agora - S.inicioVista < 3500) return;                // dá tempo para a instrução principal
-  if (agora - S.ultimaCorrecao < CONFIG.intervaloCorrecaoMs || falando()) return;
+  const intervalo = VICK.ativa ? 5000 : CONFIG.intervaloCorrecaoMs; // na conversa, corrige com menos insistência
+  if (agora - S.ultimaCorrecao < intervalo || falando()) return;
   if (falha.msg === S.ultimaFala && agora - S.ultimaFalaEm < 6000) return;
   S.ultimaCorrecao = agora; falar(falha.msg);
 }
@@ -859,10 +934,11 @@ function pular(){
 }
 function finalizar(){
   falar('Pronto, suas fotos estão salvas. Obrigada!', true);
-  encerrarCaptura();
+  encerrarCaptura(9000); // dá tempo da Vick se despedir
 }
-function encerrarCaptura(){
+function encerrarCaptura(esperaVickMs=0){
   S.rodando = false; S.fim = new Date(); pararStream(); soltarTela();
+  if (!S.refazendo) VICK.encerrar(esperaVickMs);
   mostrar('revisao'); montarRevisao();
 }
 
@@ -871,7 +947,10 @@ async function iniciarCaptura(fila, refazendo=false){
   try { S.audio = S.audio || new (window.AudioContext || window.webkitAudioContext)(); S.audio.resume(); } catch(e){}
   S.fila = fila.slice(); S.refazendo = refazendo;
   const primeira = S.fila.shift();
-  if (!refazendo && S.fotos.every(f => !f)) falar('Olá, eu sou a Vick. Vou te ajudar a fazer as fotos da sua avaliação facial. Leva menos de dois minutos.', true);
+  // A Vick conecta já no toque (exigência do iPhone para áudio e microfone); a 1ª fala dela é a saudação
+  const vickPedida = S.voz && S.conversa && CONFIG.agenteVick;
+  if (vickPedida){ VICK.posicaoAvisada = -1; VICK.iniciar(); }
+  else if (!refazendo && S.fotos.every(f => !f)) falar('Olá, eu sou a Vick. Vou te ajudar a fazer as fotos da sua avaliação facial. Leva menos de dois minutos.', true);
   mostrar('captura'); montarChips(); S.atual = primeira; montarMiniaturas();
   $('#btn-voz').setAttribute('aria-pressed', String(S.voz));
   aviso('Preparando o rastreamento facial…', 'Isso leva alguns segundos na primeira vez.');
@@ -890,6 +969,11 @@ async function iniciarCaptura(fila, refazendo=false){
   }
   aviso(null);
   await manterTelaAcesa();
+  if (vickPedida && !refazendo && S.fotos.every(f => !f)){
+    aviso('A Vick está te cumprimentando…', 'Converse à vontade. A captura começa em seguida.');
+    await esperarSaudacao();
+    aviso(null);
+  }
   S.rodando = true; ultimoTs = -1;
   iniciarVista(primeira, false);
   laco();
@@ -984,7 +1068,7 @@ $('#iniciar').addEventListener('click', () => {
   S.paciente = $('#paciente').value.trim(); S.operador = $('#operador').value.trim();
   S.modo = document.querySelector('input[name=modo]:checked').value;
   S.facing = S.modo === 'casa' ? 'user' : 'environment';
-  S.voz = $('#voz').checked; S.consentimentoEm = new Date().toISOString(); S.inicio = new Date(); S.fim = null;
+  S.voz = $('#voz').checked; S.conversa = !!CONFIG.agenteVick && $('#conversa').checked; S.consentimentoEm = new Date().toISOString(); S.inicio = new Date(); S.fim = null;
   S.fotos.forEach(f => f && URL.revokeObjectURL(f.url));
   S.fotos = Array(9).fill(null); S.puladas = new Set(); S.tentativasPulo = {};
   iniciarCaptura([0,1,2,3,4,5,6,7,8]);
@@ -1010,6 +1094,7 @@ $('#continuar').addEventListener('click', () => {
 $('#nova').addEventListener('click', () => { $('#paciente').value = ''; $('#consentimento').checked = false; validar(); mostrar('inicio'); });
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && S.rodando) manterTelaAcesa(); });
 
+$('#linha-conversa').hidden = !CONFIG.agenteVick;
 // Começa a baixar o modelo enquanto o formulário é preenchido
 carregarModelo().catch(() => {});
 
