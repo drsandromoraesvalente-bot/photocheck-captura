@@ -544,15 +544,64 @@ function escolherVoz(){
        || br.find(v => /google/i.test(v.name)) || br[0] || vs.find(v => /^pt/i.test(v.lang)) || null;
 }
 if ('speechSynthesis' in window){ escolherVoz(); speechSynthesis.onvoiceschanged = escolherVoz; }
-function falar(texto, interromper=false){
-  S.ultimaFala = texto; S.ultimaFalaEm = performance.now();
-  if (!S.voz || !('speechSynthesis' in window)) return;
-  if (interromper) speechSynthesis.cancel();
+/* Voz da Vick: cada frase tem um MP3 em ./audio/<id>.mp3 (gravado no ElevenLabs).
+   Se o arquivo não existir, cai para a voz do próprio celular. */
+const FRASES = [
+  ['abertura', 'Olá, eu sou a Vick. Vou te ajudar a fazer as fotos da sua avaliação facial. Leva menos de dois minutos.'],
+  ...VISTAS.flatMap(v => [[`vista-${v.n}-fala`, v.fala], [`vista-${v.n}-dica`, v.dica]]),
+  ['ok', 'ok'],
+  ['repetir', 'Quase. Vamos repetir, fique parada.'],
+  ['oferta-pular', 'Se preferir, toque em pular. Voltamos a esta foto no final.'],
+  ['pulou', 'Tudo bem, vamos para a próxima.'],
+  ['encerramento', 'Pronto, suas fotos estão salvas. Obrigada!'],
+  ['corr-rosto', 'Não encontrei o rosto. Centralize o rosto na moldura.'],
+  ['corr-direita', 'Gire um pouco para a sua direita.'],
+  ['corr-esquerda', 'Gire um pouco para a sua esquerda.'],
+  ['corr-levante', 'Levante um pouco o queixo.'],
+  ['corr-abaixe', 'Abaixe um pouco o queixo.'],
+  ['corr-inclinacao', 'Endireite a cabeça, sem inclinar para o ombro.'],
+  ['corr-aproxime', 'Aproxime um pouco o celular.'],
+  ['corr-afaste', 'Afaste um pouco o celular.'],
+  ['corr-centralize', 'Centralize o rosto na moldura.'],
+  ['corr-escuro', 'Está escuro. Vire-se de frente para a luz.'],
+  ['corr-luz-forte', 'A luz está forte demais no rosto. Afaste-se um pouco dela.'],
+  ['corr-luz-lado', 'A luz está batendo de um lado só. Vire-se de frente para ela.'],
+  ['corr-parada', 'Fique parada um instante.'],
+  ['corr-relaxe', 'Relaxe o rosto, sem sorrir.'],
+  ['corr-olhos', 'Mantenha os olhos abertos.']
+];
+const ID_DA_FRASE = new Map(); FRASES.forEach(([id, t]) => { if (!ID_DA_FRASE.has(t)) ID_DA_FRASE.set(t, id); });
+const SEM_AUDIO = new Set();
+const player = new Audio(); player.preload = 'auto';
+function falarSintetico(texto){
+  if (!('speechSynthesis' in window)) return;
   const u = new SpeechSynthesisUtterance(texto);
   u.lang = 'pt-BR'; if (vozPt) u.voice = vozPt; u.rate = 1.02; u.pitch = 1.04;
   speechSynthesis.speak(u);
 }
-const falando = () => 'speechSynthesis' in window && (speechSynthesis.speaking || speechSynthesis.pending);
+function falar(texto, interromper=false){
+  S.ultimaFala = texto; S.ultimaFalaEm = performance.now();
+  if (!S.voz) return;
+  if (interromper){ filaFala = null; player.pause(); if ('speechSynthesis' in window) speechSynthesis.cancel(); }
+  else if (!player.paused){ filaFala = texto; return; } // espera a fala atual terminar
+  tocar(texto);
+}
+let filaFala = null;
+player.addEventListener('ended', () => { if (filaFala){ const t = filaFala; filaFala = null; tocar(t); } });
+function tocar(texto){
+  const id = ID_DA_FRASE.get(texto);
+  if (!id || SEM_AUDIO.has(id)){ falarSintetico(texto); return; }
+  let caiu = false;
+  const reserva = () => {
+    if (caiu) return; caiu = true;
+    SEM_AUDIO.add(id); player.pause(); player.removeAttribute('src'); falarSintetico(texto);
+    if (filaFala){ const t = filaFala; filaFala = null; tocar(t); } // não perde a fala que estava esperando
+  };
+  player.onerror = reserva;
+  player.src = `./audio/${id}.mp3`;
+  player.play().catch(reserva);
+}
+const falando = () => !player.paused || ('speechSynthesis' in window && (speechSynthesis.speaking || speechSynthesis.pending));
 function bip(){
   try{
     const ac = S.audio; if (!ac) return;
@@ -940,13 +989,13 @@ $('#iniciar').addEventListener('click', () => {
   S.fotos = Array(9).fill(null); S.puladas = new Set(); S.tentativasPulo = {};
   iniciarCaptura([0,1,2,3,4,5,6,7,8]);
 });
-$('#encerrar').addEventListener('click', () => { if ('speechSynthesis' in window) speechSynthesis.cancel(); S.refazendo = false; encerrarCaptura(); });
+$('#encerrar').addEventListener('click', () => { player.pause(); if ('speechSynthesis' in window) speechSynthesis.cancel(); S.refazendo = false; encerrarCaptura(); });
 $('#pular').addEventListener('click', pular);
 $('#disparo-manual').addEventListener('click', () => capturar(true));
 $('#btn-voz').addEventListener('click', e => {
   S.voz = !S.voz; e.currentTarget.setAttribute('aria-pressed', String(S.voz));
   e.currentTarget.setAttribute('aria-label', S.voz ? 'Voz ligada' : 'Voz desligada');
-  if (!S.voz && 'speechSynthesis' in window) speechSynthesis.cancel();
+  if (!S.voz){ player.pause(); if ('speechSynthesis' in window) speechSynthesis.cancel(); }
 });
 $('#trocar-camera').addEventListener('click', async () => {
   S.facing = S.facing === 'user' ? 'environment' : 'user';
@@ -965,7 +1014,7 @@ document.addEventListener('visibilitychange', () => { if (document.visibilitySta
 carregarModelo().catch(() => {});
 
 // Exposto para testes de calibração no console
-window.__df = { CONFIG, VISTAS, poseDaMatriz, poseDosPontos, avaliar, S };
+window.__df = { CONFIG, VISTAS, FRASES, poseDaMatriz, poseDosPontos, avaliar, S };
 </script>
 </body>
 </html>
