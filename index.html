@@ -223,7 +223,7 @@ h2{font-family:var(--f-display);font-weight:400;font-size:22px;margin:0 0 4px}
     <button class="ic" id="encerrar" aria-label="Encerrar e revisar">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
     </button>
-    <div class="vista-titulo"><small id="vista-contador">Vista 1 de 9</small><strong id="vista-nome">Frontal repouso</strong><span class="vick" id="vick-status" hidden>Vick ouvindo</span></div>
+    <div class="vista-titulo"><small id="vista-contador">Vista 1 de 9</small><strong id="vista-nome">Frontal repouso</strong><span class="vick" id="vick-status" role="status" hidden>Vick ouvindo</span></div>
     <button class="ic" id="btn-voz" aria-label="Voz ligada" aria-pressed="true">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16.5 8.5a5 5 0 010 7"/></svg>
     </button>
@@ -294,7 +294,7 @@ const CONFIG = {
   wasm:   params.get('wasm')   || caminho('./mediapipe/wasm'),
   modelo: params.get('modelo') || caminho('./modelo/face_landmarker.task'),
   // ID do agente "Vick · Photocheck" no ElevenLabs (público). Vazio = Vick só com voz guiada, sem conversa.
-  agenteVick: params.get('agente') || '',
+  agenteVick: (params.get('agente') || '').trim(),
   estabilidadeMs: 500,      // pose dentro da tolerância por 0,5 s
   dicaMs: 20000,            // instrução detalhada após 20 s
   pularMs: 40000,           // oferece pular após 40 s
@@ -579,48 +579,111 @@ const FRASES = [
   ['corr-olhos', 'Mantenha os olhos abertos.']
 ];
 const ID_DA_FRASE = new Map(); FRASES.forEach(([id, t]) => { if (!ID_DA_FRASE.has(t)) ID_DA_FRASE.set(t, id); });
+// Only media errors (unsupported/missing/corrupt) are cached for this page session.
 const SEM_AUDIO = new Set();
-const player = new Audio(); player.preload = 'auto';
-function falarSintetico(texto){
-  if (!('speechSynthesis' in window)) return;
+const player = new Audio(); player.preload = 'none';
+let falaToken = 0, falaTimer = null, filaFala = null, vozOcupada = false;
+function pararVoz(){
+  ++falaToken; clearTimeout(falaTimer); filaFala = null; vozOcupada = false;
+  player.onerror = player.onended = player.onplaying = null;
+  player.pause(); player.removeAttribute('src'); player.load();
+  if ('speechSynthesis' in window) speechSynthesis.cancel();
+}
+function concluirFala(token){
+  if (token !== falaToken) return;
+  clearTimeout(falaTimer); vozOcupada = false;
+  const proxima = filaFala; filaFala = null;
+  if (proxima && S.voz && !VICK.ativa) tocar(proxima);
+}
+function falarSintetico(texto, token){
+  if (token !== falaToken || !S.voz || VICK.ativa) return;
+  if (!('speechSynthesis' in window)){
+    statusVick('Voz indisponível · siga as instruções na tela'); concluirFala(token); return;
+  }
+  statusVick('Orientação guiada · voz do aparelho');
   const u = new SpeechSynthesisUtterance(texto);
   u.lang = 'pt-BR'; if (vozPt) u.voice = vozPt; u.rate = 1.02; u.pitch = 1.04;
-  speechSynthesis.speak(u);
+  u.onend = () => concluirFala(token);
+  u.onerror = () => { if (token !== falaToken) return; statusVick('Áudio indisponível · siga a tela ou religue a voz'); concluirFala(token); };
+  falaTimer = setTimeout(() => {
+    if (token !== falaToken) return;
+    u.onend = u.onerror = null; speechSynthesis.cancel();
+    statusVick('Áudio indisponível · siga a tela ou religue a voz'); concluirFala(token);
+  }, 20000);
+  try { speechSynthesis.speak(u); } catch (_) { u.onerror(); }
 }
-/* ---------- Vick em conversa livre (agente de voz do ElevenLabs) ----------
-   O app não fala sozinho: ele avisa a Vick do que está acontecendo com mensagens [ESTADO]
-   e ela conversa com a paciente. Se a conexão cair, volta para os áudios fixos. */
+/* The bundled SDK owns microphone permission and track cleanup. Never request
+   microphone permission for guided mode or embed an ElevenLabs API key here. */
 const VICK = {
-  conv:null, ativa:false, falandoAgora:false, posicaoAvisada:-1,
+  conv:null, ativa:false, conectando:false, falandoAgora:false, posicaoAvisada:-1,
+  geracao:0, timer:null, sdk:null,
   carregarSDK(){
     if (window.ElevenLabsClient) return Promise.resolve();
-    return new Promise((ok, erro) => { const s = document.createElement('script'); s.src = './lib/elevenlabs-client-1.27.0.js'; s.onload = ok; s.onerror = () => erro(new Error('SDK da Vick não carregou')); document.head.append(s); });
+    if (!this.sdk) this.sdk = new Promise((ok, erro) => {
+      const s = document.createElement('script');
+      s.src = './lib/elevenlabs-client-1.27.0.js';
+      const timer = setTimeout(() => { s.remove(); erro(new Error('SDK timeout')); }, 8000);
+      s.onload = () => { clearTimeout(timer); window.ElevenLabsClient ? ok() : erro(new Error('SDK inválido')); };
+      s.onerror = () => { clearTimeout(timer); s.remove(); erro(new Error('SDK indisponível')); };
+      document.head.append(s);
+    }).catch(e => { this.sdk = null; throw e; });
+    return this.sdk;
+  },
+  fechar(c){ try { Promise.resolve(c?.endSession()).catch(() => {}); } catch (_) {} },
+  recuperar(motivo){
+    this.encerrar();
+    if (!S.voz) return;
+    statusVick(motivo + ' · orientação guiada');
+    if (S.rodando) falar(VISTAS[S.atual].fala, true);
   },
   async iniciar(){
-    if (!CONFIG.agenteVick || this.conv) return;
-    statusVick('Conectando a Vick…');
-    try{
+    if (!CONFIG.agenteVick || !S.voz || !S.conversa || this.conv || this.conectando) return;
+    if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia){
+      this.recuperar('Microfone indisponível'); return;
+    }
+    const g = ++this.geracao;
+    const vigente = () => g === this.geracao && S.voz;
+    this.conectando = true; statusVick('Conectando a Vick…');
+    this.timer = setTimeout(() => { if (vigente()) this.recuperar('Tempo de conexão esgotado'); }, 12000);
+    try {
       await this.carregarSDK();
-      this.conv = await ElevenLabsClient.Conversation.startSession({
-        agentId: CONFIG.agenteVick, connectionType:'websocket',
-        onConnect: () => { this.ativa = true; statusVick('Vick ouvindo'); },
-        onDisconnect: () => { this.ativa = false; this.conv = null; this.falandoAgora = false; statusVick(null); },
-        onError: (e) => { console.error('Vick', e); },
-        onModeChange: ({ mode }) => { this.falandoAgora = mode === 'speaking'; statusVick(mode === 'speaking' ? 'Vick falando' : 'Vick ouvindo'); }
+      if (!vigente()) return;
+      const c = await window.ElevenLabsClient.Conversation.startSession({
+        agentId:CONFIG.agenteVick, connectionType:'websocket',
+        onConnect: () => { if (vigente()) statusVick('Conectando o áudio da Vick…'); },
+        onDisconnect: () => { if (vigente()) this.recuperar('Conversa desconectada'); },
+        onError: () => { if (vigente()) this.recuperar('Falha na conversa'); },
+        onModeChange: ({mode}) => {
+          if (!vigente() || !this.ativa) return;
+          this.falandoAgora = mode === 'speaking'; statusVick(this.falandoAgora ? 'Vick falando' : 'Vick ouvindo');
+        }
       });
-      this.ativa = true;
+      if (!vigente()){ this.fechar(c); return; }
+      clearTimeout(this.timer); this.conectando = false;
+      pararVoz(); this.conv = c; this.ativa = true; statusVick('Vick ouvindo');
+      if (S.rodando) falar(VISTAS[S.atual].fala);
     } catch(e){
-      console.error(e); this.conv = null; this.ativa = false;
-      statusVick(null); $('#correcao').textContent = 'A Vick não conectou. Sigo com a voz guiada.';
+      if (vigente()) this.recuperar(e?.name === 'NotAllowedError' ? 'Microfone não autorizado' : 'Conversa indisponível');
     }
   },
-  enviar(msg){ if (!this.ativa || !this.conv) return; try { this.conv.sendUserMessage(msg); } catch(e){ console.error(e); } },
-  contexto(msg){ if (!this.ativa || !this.conv) return; try { this.conv.sendContextualUpdate(msg); } catch(e){} },
-  async encerrar(depoisMs=0){
-    const c = this.conv; if (!c) return;
-    if (depoisMs) await espera(depoisMs);
-    try { await c.endSession(); } catch(e){}
-    this.conv = null; this.ativa = false; statusVick(null);
+  enviar(msg){
+    if (!this.ativa || !this.conv) return;
+    try { this.conv.sendUserMessage(msg); } catch (_) { this.recuperar('Falha ao enviar orientação'); }
+  },
+  contexto(msg){
+    if (!this.ativa || !this.conv) return;
+    try { this.conv.sendContextualUpdate(msg); } catch (_) { this.recuperar('Falha na conversa'); }
+  },
+  encerrar(depoisMs=0){
+    if (depoisMs && this.conv){
+      const g = this.geracao;
+      clearTimeout(this.timer);
+      this.timer = setTimeout(() => { if (g === this.geracao) this.encerrar(); }, depoisMs);
+      return;
+    }
+    ++this.geracao; clearTimeout(this.timer);
+    const c = this.conv; this.conv = null; this.ativa = this.conectando = this.falandoAgora = false;
+    this.fechar(c); statusVick(null);
   }
 };
 // Espera a Vick conectar e terminar a saudação (no máximo ~14 s), para não atropelar a fala dela
@@ -655,27 +718,42 @@ function falar(texto, interromper=false){
   S.ultimaFala = texto; S.ultimaFalaEm = performance.now();
   if (!S.voz) return;
   if (VICK.ativa){ const msg = estadoParaVick(texto); if (msg) VICK.enviar(msg); return; }
-  if (interromper){ filaFala = null; player.pause(); if ('speechSynthesis' in window) speechSynthesis.cancel(); }
-  else if (!player.paused){ filaFala = texto; return; } // espera a fala atual terminar
+  if (interromper) pararVoz();
+  else if (vozOcupada){ filaFala = texto; return; }
   tocar(texto);
 }
-let filaFala = null;
-player.addEventListener('ended', () => { if (filaFala){ const t = filaFala; filaFala = null; tocar(t); } });
 function tocar(texto){
-  const id = ID_DA_FRASE.get(texto);
-  if (!id || SEM_AUDIO.has(id)){ falarSintetico(texto); return; }
+  if (!S.voz || VICK.ativa) return;
+  const token = ++falaToken, id = ID_DA_FRASE.get(texto);
+  vozOcupada = true;
+  if (!id || SEM_AUDIO.has(id)){ falarSintetico(texto, token); return; }
   let caiu = false;
-  const reserva = () => {
-    if (caiu) return; caiu = true;
-    SEM_AUDIO.add(id); player.pause(); player.removeAttribute('src'); falarSintetico(texto);
-    if (filaFala){ const t = filaFala; filaFala = null; tocar(t); } // não perde a fala que estava esperando
+  const reserva = (erro) => {
+    if (caiu || token !== falaToken || !S.voz || VICK.ativa) return;
+    caiu = true; clearTimeout(falaTimer);
+    // A blocked play() or network timeout does not prove the MP3 is missing.
+    if ([3,4].includes(player.error?.code)){
+      SEM_AUDIO.add(id); console.warn('[Vick] MP3 ausente ou inválido:', id);
+    }
+    player.onerror = player.onended = player.onplaying = null;
+    player.pause(); player.removeAttribute('src'); player.load();
+    falarSintetico(texto, token);
   };
   player.onerror = reserva;
+  player.onended = () => { caiu = true; concluirFala(token); };
+  player.onplaying = () => {
+    if (token !== falaToken || caiu) return;
+    clearTimeout(falaTimer);
+    falaTimer = setTimeout(reserva, 20000); // also recover from a stalled stream
+    statusVick('Orientação guiada');
+  };
+  falaTimer = setTimeout(reserva, 4000);
   player.src = `./audio/${id}.mp3`;
-  player.play().catch(reserva);
+  try { Promise.resolve(player.play()).catch(reserva); } catch(e) { reserva(e); }
 }
-const falando = () => VICK.falandoAgora || !player.paused || ('speechSynthesis' in window && (speechSynthesis.speaking || speechSynthesis.pending));
+const falando = () => VICK.falandoAgora || vozOcupada;
 function bip(){
+  if (!S.voz) return;
   try{
     const ac = S.audio; if (!ac) return;
     const o = ac.createOscillator(), g = ac.createGain();
@@ -938,11 +1016,13 @@ function finalizar(){
 }
 function encerrarCaptura(esperaVickMs=0){
   S.rodando = false; S.fim = new Date(); pararStream(); soltarTela();
-  if (!S.refazendo) VICK.encerrar(esperaVickMs);
+  VICK.encerrar(esperaVickMs);
+  if (!esperaVickMs) pararVoz();
   mostrar('revisao'); montarRevisao();
 }
 
 async function iniciarCaptura(fila, refazendo=false){
+  VICK.encerrar(); pararVoz();
   // Som e voz precisam nascer do toque (iOS)
   try { S.audio = S.audio || new (window.AudioContext || window.webkitAudioContext)(); S.audio.resume(); } catch(e){}
   S.fila = fila.slice(); S.refazendo = refazendo;
@@ -956,6 +1036,7 @@ async function iniciarCaptura(fila, refazendo=false){
   aviso('Preparando o rastreamento facial…', 'Isso leva alguns segundos na primeira vez.');
   try { await carregarModelo(); }
   catch(e){
+    VICK.encerrar(); pararVoz();
     const local = SEM_ENDERECO;
     aviso('Não consegui carregar o rastreamento facial',
       (local ? 'O app foi aberto direto do arquivo. Ele precisa estar publicado num endereço https (por exemplo, Netlify). '
@@ -963,6 +1044,7 @@ async function iniciarCaptura(fila, refazendo=false){
   aviso('Abrindo a câmera…', '');
   try { await abrirCamera(); }
   catch(e){
+    VICK.encerrar(); pararVoz();
     console.error(e);
     aviso('Não consegui abrir a câmera', 'Permita o acesso à câmera nas configurações do navegador e toque em Tentar de novo. O app precisa estar aberto em um endereço https.', true);
     $('#aviso-botao').onclick = () => iniciarCaptura([primeira, ...S.fila], refazendo); return;
@@ -1073,13 +1155,14 @@ $('#iniciar').addEventListener('click', () => {
   S.fotos = Array(9).fill(null); S.puladas = new Set(); S.tentativasPulo = {};
   iniciarCaptura([0,1,2,3,4,5,6,7,8]);
 });
-$('#encerrar').addEventListener('click', () => { player.pause(); if ('speechSynthesis' in window) speechSynthesis.cancel(); S.refazendo = false; encerrarCaptura(); });
+$('#encerrar').addEventListener('click', () => { pararVoz(); S.refazendo = false; encerrarCaptura(); });
 $('#pular').addEventListener('click', pular);
 $('#disparo-manual').addEventListener('click', () => capturar(true));
 $('#btn-voz').addEventListener('click', e => {
   S.voz = !S.voz; e.currentTarget.setAttribute('aria-pressed', String(S.voz));
   e.currentTarget.setAttribute('aria-label', S.voz ? 'Voz ligada' : 'Voz desligada');
-  if (!S.voz){ player.pause(); if ('speechSynthesis' in window) speechSynthesis.cancel(); }
+  if (!S.voz){ pararVoz(); VICK.encerrar(); statusVick('Voz desligada'); }
+  else if (S.rodando) falar(VISTAS[S.atual].fala, true);
 });
 $('#trocar-camera').addEventListener('click', async () => {
   S.facing = S.facing === 'user' ? 'environment' : 'user';
@@ -1094,6 +1177,8 @@ $('#continuar').addEventListener('click', () => {
 $('#nova').addEventListener('click', () => { $('#paciente').value = ''; $('#consentimento').checked = false; validar(); mostrar('inicio'); });
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && S.rodando) manterTelaAcesa(); });
 
+window.addEventListener('offline', () => { if (VICK.ativa || VICK.conectando) VICK.recuperar('Sem conexão'); });
+window.addEventListener('pagehide', () => { pararVoz(); VICK.encerrar(); });
 $('#linha-conversa').hidden = !CONFIG.agenteVick;
 // Começa a baixar o modelo enquanto o formulário é preenchido
 carregarModelo().catch(() => {});
