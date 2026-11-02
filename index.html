@@ -273,6 +273,7 @@ h2{font-family:var(--f-display);font-weight:400;font-size:22px;margin:0 0 4px}
   <div class="acoes">
     <button class="btn" id="analisar">Analisar (DF Análise)</button>
     <button class="btn sec" id="baixar">Baixar pacote da sessão (.zip)</button>
+    <button class="btn sec" id="ver-fundo" aria-pressed="false">Ver com fundo escuro</button>
     <button class="btn sec" id="continuar" hidden>Capturar vistas pendentes</button>
     <button class="btn sec" id="nova">Nova avaliação</button>
   </div>
@@ -916,7 +917,9 @@ async function capturar(manual){
     pontos: detMelhor ? detMelhor.lm.map(p => [r4(p.x), r4(p.y), r4(p.z)]) : null
   };
   if (S.fotos[idx]) URL.revokeObjectURL(S.fotos[idx].url);
-  S.fotos[idx] = { blob, url: URL.createObjectURL(blob), dados };
+  if (S.fotos[idx] && S.fotos[idx].fundo) URL.revokeObjectURL(S.fotos[idx].fundo.url);
+  S.fotos[idx] = { blob, url: URL.createObjectURL(blob), dados, fundo:null };
+  gerarFundoEscuro(idx); // em segundo plano: não atrasa a captura
   S.puladas.delete(idx); delete S.tentativasPulo[idx];
   montarMiniaturas();
   $('#correcao').textContent = 'Foto salva.';
@@ -1002,7 +1005,7 @@ function montarRevisao(){
     const f = S.fotos[i], st = statusVista(i);
     const card = document.createElement('article'); card.className = 'foto';
     const im = document.createElement('div'); im.className = 'img';
-    if (f){ const img = document.createElement('img'); img.src = f.url; img.alt = `Vista ${v.n}: ${v.nome}`; im.append(img); }
+    if (f){ const img = document.createElement('img'); img.src = S.verFundo && f.fundo ? f.fundo.url : f.url; img.alt = `Vista ${v.n}: ${v.nome}`; im.append(img); }
     else im.textContent = 'Sem foto';
     const info = document.createElement('div'); info.className = 'info';
     info.innerHTML = `<div class="titulo"><span class="n">${v.n}</span><strong></strong></div><span class="selo-st ${st}">${ROTULO[st]}</span><span class="meta"></span>`;
@@ -1023,11 +1026,13 @@ async function baixarPacote(){
   if (!window.JSZip){ btn.textContent = 'Sem internet para gerar o .zip. Recarregue a página.'; return; } btn.disabled = true; btn.textContent = 'Preparando o pacote…';
   try{
     const zip = new JSZip(), data = dataLocal(S.inicio || new Date()), base = `${data}_${slug(S.paciente) || 'paciente'}`;
-    const fotos = zip.folder('fotos'), dados = zip.folder('dados');
+    const fotos = zip.folder('fotos'), dados = zip.folder('dados'), escuras = zip.folder('fotos-fundo-escuro');
+    await filaFundo; // espera terminar as versões com fundo escuro em andamento
     S.fotos.forEach((f, i) => {
       if (!f) return;
       const nome = `${base}_vista-${VISTAS[i].n}`;
       fotos.file(nome + '.jpg', f.blob);
+      if (f.fundo) escuras.file(nome + '_fundo-escuro.jpg', f.fundo.blob);
       dados.file(nome + '_pontos.json', JSON.stringify({ vista:VISTAS[i].n, nome:VISTAS[i].nome, formato:'[x, y, z] normalizados (MediaPipe Face Landmarker, 478 pontos)', pontos:f.dados.pontos }));
     });
     const sessao = {
@@ -1035,6 +1040,7 @@ async function baixarPacote(){
       data, inicio:S.inicio && S.inicio.toISOString(), fim:S.fim && S.fim.toISOString(),
       modo:S.modo, camera:S.facing === 'user' ? 'frontal' : 'traseira', aparelho:navigator.userAgent,
       consentimentoLGPD:{ aceito:true, registradoEm:S.consentimentoEm },
+      fundoEscuro:{ cor:FUNDO_COR, pasta:'fotos-fundo-escuro', observacao:'Somente o fundo foi substituído por recorte automático; o rosto não é alterado. A pasta "fotos" guarda as originais.' },
       configuracao:{ ...CONFIG, bundle:undefined, wasm:undefined, modelo:undefined },
       vistas: VISTAS.map((v, i) => { const f = S.fotos[i]; const { pontos, ...resto } = f ? f.dados : {}; return { vista:v.n, nome:v.nome, status:statusVista(i), arquivo: f ? `fotos/${base}_vista-${v.n}.jpg` : null, ...resto }; })
     };
@@ -1044,6 +1050,63 @@ async function baixarPacote(){
     document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 30000);
   } finally { btn.disabled = false; btn.textContent = 'Baixar pacote da sessão (.zip)'; }
 }
+
+/* =====================================================================
+   FUNDO ESCURO AUTOMÁTICO
+   Recorta a pessoa (MediaPipe Selfie Segmentation, roda no aparelho) e pinta
+   o fundo com uma cor única. O rosto nunca é alterado; a original é mantida.
+   ===================================================================== */
+const FUNDO_COR = params.get('fundo') || '#121614';
+let segmentador = null, filaFundo = Promise.resolve();
+function carregarSegmentador(){
+  if (segmentador) return segmentador;
+  segmentador = new Promise((ok, erro) => {
+    const s = document.createElement('script'); s.src = './lib/selfie/selfie_segmentation.js';
+    s.onload = async () => {
+      try {
+        const seg = new SelfieSegmentation({ locateFile: f => './lib/selfie/' + f });
+        seg.setOptions({ modelSelection: 0 });
+        let resolver = null; seg.onResults(r => resolver && resolver(r));
+        await seg.initialize();
+        ok({ processar: img => new Promise(async (fim, falha) => { resolver = fim; try { await seg.send({ image: img }); } catch(e){ falha(e); } }) });
+      } catch(e){ erro(e); }
+    };
+    s.onerror = () => erro(new Error('recorte não carregou'));
+    document.head.append(s);
+  });
+  segmentador.catch(e => { console.error(e); segmentador = null; });
+  return segmentador;
+}
+async function fotoComFundoEscuro(blob){
+  const seg = await carregarSegmentador();
+  const img = await createImageBitmap(blob);
+  // O recorte trabalha em baixa resolução; mandamos uma cópia reduzida e ampliamos a máscara com suavização
+  const esc = Math.min(1, 1024 / Math.max(img.width, img.height));
+  const pequeno = document.createElement('canvas'); pequeno.width = Math.round(img.width * esc); pequeno.height = Math.round(img.height * esc);
+  pequeno.getContext('2d').drawImage(img, 0, 0, pequeno.width, pequeno.height);
+  const r = await seg.processar(pequeno);
+  const W = img.width, H = img.height;
+  const pessoa = document.createElement('canvas'); pessoa.width = W; pessoa.height = H;
+  const px = pessoa.getContext('2d'); px.imageSmoothingEnabled = true; px.imageSmoothingQuality = 'high';
+  px.drawImage(r.segmentationMask, 0, 0, W, H);
+  px.globalCompositeOperation = 'source-in'; px.drawImage(img, 0, 0);
+  const out = document.createElement('canvas'); out.width = W; out.height = H;
+  const ox = out.getContext('2d'); ox.fillStyle = FUNDO_COR; ox.fillRect(0, 0, W, H); ox.drawImage(pessoa, 0, 0);
+  return new Promise(res => out.toBlob(res, 'image/jpeg', 0.95));
+}
+function gerarFundoEscuro(idx){
+  const f = S.fotos[idx]; if (!f) return;
+  filaFundo = filaFundo.then(async () => {
+    if (S.fotos[idx] !== f) return;                    // a foto foi refeita no meio do caminho
+    try {
+      const b = await fotoComFundoEscuro(f.blob);
+      if (S.fotos[idx] !== f) return;
+      f.fundo = { blob:b, url:URL.createObjectURL(b) };
+      if (!$('#tela-revisao').hidden) montarRevisao();
+    } catch(e){ console.error('fundo escuro', e); }
+  });
+}
+S.verFundo = false;
 
 /* =====================================================================
    TELAS E EVENTOS
@@ -1088,6 +1151,11 @@ $('#trocar-camera').addEventListener('click', async () => {
   try { await abrirCamera(); } catch(e){ S.facing = S.facing === 'user' ? 'environment' : 'user'; try { await abrirCamera(); } catch(_){} }
 });
 $('#baixar').addEventListener('click', baixarPacote);
+$('#ver-fundo').addEventListener('click', e => {
+  S.verFundo = !S.verFundo; e.currentTarget.setAttribute('aria-pressed', String(S.verFundo));
+  e.currentTarget.textContent = S.verFundo ? 'Ver fotos originais' : 'Ver com fundo escuro';
+  montarRevisao();
+});
 // DF Análise: módulo carregado só quando usado
 async function abrirDFAnalise(origem){
   const m = await import('./analise.js');
