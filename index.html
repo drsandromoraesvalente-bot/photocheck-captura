@@ -333,13 +333,13 @@ const VISTAS = [
   { n:6, id:'perfil-esquerdo', nome:'Perfil esquerdo', yaw:[-100,-65], pitch:[-4,4], roll:4, expr:'neutra', olhos:true,
     fala:'Agora o outro perfil, para a sua esquerda.',
     dica:'Gire até o outro perfil completo, de forma que a câmera veja só um lado do rosto. Olhe para um ponto fixo na parede.' },
-  { n:7, id:'submentoniana', nome:'Submentoniana', yaw:[-5,5], pitch:[30,40], roll:3, expr:'neutra', olhos:false, dist:[0.30,0.64],
+  { n:7, id:'submentoniana', nome:'Submentoniana', yaw:[-5,5], pitch:[28,42], roll:4, expr:'neutra', olhos:false, dist:[0.22,0.75], centroX:2,
     fala:'Volte de frente e levante o queixo devagar.',
     dica:'De frente para a câmera, incline a cabeça para trás, mostrando a região embaixo do queixo e o pescoço.' },
-  { n:8, id:'queixo-abaixado', nome:'Queixo abaixado', yaw:[-5,5], pitch:[-35,-25], roll:3, expr:'neutra', olhos:false, dist:[0.30,0.64],
+  { n:8, id:'queixo-abaixado', nome:'Queixo abaixado', yaw:[-5,5], pitch:[-38,-22], roll:4, expr:'qualquer', olhos:false, dist:[0.20,0.75], centroX:2,
     fala:'Agora abaixe o queixo, olhando para o chão.',
     dica:'Abaixe o queixo em direção ao peito, olhando para o chão, sem curvar os ombros.' },
-  { n:9, id:'vista-superior', nome:'Vista superior', yaw:[-5,5], pitch:[-50,-40], roll:3, expr:'neutra', olhos:false, dist:[0.28,0.64],
+  { n:9, id:'vista-superior', nome:'Vista superior', yaw:[-5,5], pitch:[-55,-35], roll:4, expr:'qualquer', olhos:false, dist:[0.18,0.75], centroX:2,
     fala:'Abaixe um pouco mais e segure.',
     dica:'Abaixe a cabeça um pouco mais, como se olhasse para os seus pés, e segure parada.' }
 ];
@@ -521,7 +521,8 @@ function avaliar(vista, d, m){
     altura < dmin ? 'Aproxime um pouco o celular.' : 'Afaste um pouco o celular.');
 
   const cx = (d.caixa.x0 + d.caixa.x1)/2, cy = (d.caixa.y0 + d.caixa.y1)/2;
-  marca('centro', Math.abs(cx-0.5) <= CONFIG.centro && Math.abs(cy-0.5) <= CONFIG.centro*1.5, 'Centralize o rosto na moldura.');
+  const tc = CONFIG.centro * (vista.centroX || 1); // cabeça inclinada: o rosto desce no quadro, então a folga é maior
+  marca('centro', Math.abs(cx-0.5) <= tc && Math.abs(cy-0.5) <= tc*1.5, 'Centralize o rosto na moldura.');
 
   if (!m){ marca('luz', false, null); marca('foco', false, null); }
   else {
@@ -535,7 +536,9 @@ function avaliar(vista, d, m){
   }
 
   const bs = d.bs, sorriso = ((bs.mouthSmileLeft||0) + (bs.mouthSmileRight||0))/2;
-  if (vista.expr === 'sorriso') marca('expressao', sorriso >= CONFIG.sorrisoAmplo, 'Agora um sorriso bem aberto.');
+  // Cabeça abaixada: o detector de expressão erra muito nesse ângulo, então não bloqueia
+  if (vista.expr === 'qualquer') marca('expressao', true, null);
+  else if (vista.expr === 'sorriso') marca('expressao', sorriso >= CONFIG.sorrisoAmplo, 'Agora um sorriso bem aberto.');
   else marca('expressao', sorriso < CONFIG.sorrisoNeutro && (bs.jawOpen||0) < CONFIG.bocaAberta, 'Relaxe o rosto, sem sorrir.');
 
   if (vista.olhos){
