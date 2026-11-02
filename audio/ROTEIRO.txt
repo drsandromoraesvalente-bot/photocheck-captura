@@ -1,10 +1,10 @@
-ROTEIRO DE ÁUDIOS DA VICK — Kaptora System · Avaliação Completa
+ROTEIRO DE ÁUDIOS DA KAPTORA — Kaptora System · Avaliação Completa
 
-Como gravar: no ElevenLabs, use a voz da Vick. Gere cada frase separadamente, baixe em MP3 e salve com o nome do arquivo exatamente como está abaixo (minúsculas, com hífen).
+Como gravar: no ElevenLabs, use a voz da Kaptora (ID 7eUAxNOneHxqfyRS77mW). Gere cada frase separadamente, baixe em MP3 e salve com o nome do arquivo exatamente como está abaixo (minúsculas, com hífen).
 Depois mande os MP3 aqui no chat. Total: 39 arquivos.
 
 01. abertura.mp3
-    Olá, eu sou a Vick. Vou te ajudar a fazer as fotos da sua avaliação facial. Leva menos de dois minutos.
+    Olá, eu sou a Kaptora. Vou te ajudar a fazer as fotos da sua avaliação facial. Leva menos de dois minutos.
 
 02. vista-1-fala.mp3
     Olhe para a câmera, com o rosto relaxado.
