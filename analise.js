@@ -104,9 +104,10 @@ const A = {
   lm:null,                         // FaceLandmarker em modo imagem
   vista:'frente',
   dados:{ frente:null, perfil:null }, // { img, W, H, original(ImageData), lm, pts, escala, sF, estimados:Set, ok }
-  sim:{ frente:{ temporas:0, malar:0, olheira:0, sulco:0, jowls:0, submento:0 }, perfil:{ mento:0, papada:0 } },
+  sim:{ z1:0, z2:0, z21:0, z3:0, z4:0, z5:0, z6:0, T:0, ZG:0, M:0, OL1:0, SN:0, ME:0 },
   tecnica:'',                      // modelo de técnica aplicado no planejamento
   grade:false,                     // grade de terços e quintos (vista de frente)
+  mapa:false,                      // Drawn Face Points + LipoGraft Codes
   desenhando:false, corTraco:'#ceb78e', desenhos:{ frente:[], perfil:[] }, traco:null,
   sel:null, ajustando:false, antes:false, arrastando:null, renderPendente:false
 };
@@ -223,34 +224,111 @@ function encostarNoContorno(d, p, faceH){
 }
 
 /* ---------- Planejamento: regiões, ações e modelos de técnica ---------- */
-const SIM_VAZIO = () => ({ frente:{ temporas:0, malar:0, olheira:0, sulco:0, jowls:0, submento:0 }, perfil:{ mento:0, papada:0 } });
-// [chave, nome, ação, mínimo, máximo, passo, unidade]
-const REGIOES = {
-  frente: [
-    ['temporas', 'Têmporas', 'repor', 0, 1, 0.05, '%'],
-    ['malar', 'Malar', 'repor', 0, 1, 0.05, '%'],
-    ['olheira', 'Olheira', 'suavizar', 0, 1, 0.05, '%'],
-    ['sulco', 'Sulco nasogeniano', 'suavizar', 0, 1, 0.05, '%'],
-    ['jowls', 'Linha mandibular / jowls', 'retirar', 0, 1, 0.05, '%'],
-    ['submento', 'Submento (vista de frente)', 'retirar', 0, 1, 0.05, '%']
-  ],
-  perfil: [
-    ['mento', 'Mento', 'projetar', 0, 10, 0.5, 'mm'],
-    ['papada', 'Submento / ângulo cervical', 'retirar', 0, 1, 0.05, '%']
-  ]
-};
+// Plano único por paciente (vale para frente e perfil): zonas Drawn Face Points (lipoescultura)
+// e regiões LipoGraft Codes (lipoenxertia), com os nomes do método.
+const SIM_VAZIO = () => ({ z1:0, z2:0, z21:0, z3:0, z4:0, z5:0, z6:0, T:0, ZG:0, M:0, OL1:0, SN:0, ME:0 });
+// [chave, rótulo, ação, mínimo, máximo, passo, unidade]
+const GRUPOS = [
+  { titulo:'Lipoescultura · Drawn Face Points', itens:[
+    ['z1', 'Zona 1', 'retirar', 0, 1, 0.05, '%'],
+    ['z2', 'Zona 2', 'retirar', 0, 1, 0.05, '%'],
+    ['z21', 'Zona 2.1', 'retirar', 0, 1, 0.05, '%'],
+    ['z3', 'Zona 3', 'retirar', 0, 1, 0.05, '%'],
+    ['z4', 'Zona 4', 'retirar', 0, 1, 0.05, '%'],
+    ['z5', 'Zona 5', 'retirar', 0, 1, 0.05, '%'],
+    ['z6', 'Zona 6', 'retirar', 0, 1, 0.05, '%'] ] },
+  { titulo:'Lipoenxertia · LipoGraft Codes', itens:[
+    ['T', 'T', 'repor', 0, 1, 0.05, '%'],
+    ['ZG', 'ZG', 'repor', 0, 1, 0.05, '%'],
+    ['M', 'M', 'repor', 0, 1, 0.05, '%'],
+    ['OL1', 'OL1', 'repor', 0, 1, 0.05, '%'],
+    ['SN', 'SN', 'repor', 0, 1, 0.05, '%'],
+    ['ME', 'ME', 'projetar', 0, 10, 0.5, 'mm'] ] }
+];
+const ITENS = GRUPOS.flatMap(g => g.itens);
 const ACAO = { retirar:'Retirar volume', repor:'Repor volume', projetar:'Projetar', suavizar:'Suavizar sombra' };
 // Modelos de partida (ilustrativos). Os valores devem ser calibrados pelo método Drawn Face.
 const TECNICAS = {
-  'Drawn Face cervicofacial': { frente:{ temporas:.4, malar:.6, olheira:.4, sulco:.3, jowls:.6, submento:.7 }, perfil:{ mento:3, papada:.7 } },
-  'Harmonização clássica': { frente:{ temporas:.4, malar:.5, olheira:.5, sulco:.5, jowls:0, submento:0 }, perfil:{ mento:4, papada:0 } }
+  'Drawn Face cervicofacial': { z1:.8, z2:.5, z21:.4, z3:.4, z4:.7, z5:.3, z6:.3, T:.4, ZG:.4, M:.5, OL1:.4, SN:.3, ME:3 },
+  'Só lipoenxertia (LipoGraft)': { z1:0, z2:0, z21:0, z3:0, z4:0, z5:0, z6:0, T:.4, ZG:.4, M:.5, OL1:.5, SN:.5, ME:4 }
 };
-const simAtiva = v => Object.values(A.sim[v] || {}).some(x => x);
+// Como cada zona/código move a imagem na simulação
+function efeitos(vista){
+  const P = A.sim;
+  return vista === 'perfil'
+    ? { mento:P.ME, papada:P.z1, jowlP:P.z4 }
+    : { temporas:P.T, malar:Math.max(P.M, P.ZG), olheira:P.OL1, sulco:Math.max(P.SN, P.z3 * 0.6), jowls:P.z4, submento:P.z1, angulo:P.z2, lateral:P.z5, pescoco:P.z21 };
+}
+/* ---------- Mapa Drawn Face Points + LipoGraft Codes sobre a foto ---------- */
+// Pares espelhados da malha (lado direito do paciente → lado esquerdo)
+const ESPELHO = {234:454,93:323,132:361,58:288,172:397,136:365,150:379,149:378,176:400,148:377,127:356,117:346,123:352,147:376,187:411,205:425,206:426,207:427,129:358,61:291,137:366,177:401,215:435,138:367,135:364,170:395,203:423,98:327,64:294,50:280,142:371,121:350,193:417,143:372,213:433,31:261,116:345,57:287,43:273,204:424,211:431,108:337,107:336,139:368,37:267,84:314,212:432,227:447,21:251,54:284,169:394};
+const IDX = (lado, i) => lado === 'D' ? i : (ESPELHO[i] ?? i);
+// Lado do paciente mais visível na foto (no perfil só um lado aparece)
+function ladoVisivel(d){ const f = d.lm; return dist(f[234], f[1]) >= dist(f[454], f[1]) ? 'D' : 'E'; }
+const ZONAS_DF = [
+  // [rótulo, cor, chave do plano, índices (lado direito do paciente)]
+  ['5', '#a5d63c', 'z5', [31, 143, 127, 234, 123, 117]],
+  ['6', null, 'z6', [129, 50, 123, 147, 187, 205, 203]],
+  ['3', '#6f88a8', 'z3', [129, 203, 205, 187, 147, 137, 177, 213, 207, 206, 98]],
+  ['4', '#f5b63a', 'z4', [206, 207, 213, 177, 215, 138, 135, 136, 150, 149, 170, 211, 204, 43, 57]],
+  ['2', '#e8457a', 'z2', [234, 93, 132, 58, 172, 138, 215, 177, 137]]
+];
+const CODIGOS = [ // [código, chave do plano ou null, índice (lado direito do paciente)]
+  ['F', null, 108], ['G', null, 107], ['OB', null, 193], ['OL1', 'OL1', 121], ['M', 'M', 142], ['ZG', 'ZG', 116], ['T', 'T', 139],
+  ['N2', null, 197], ['N1', null, 164], ['FP', null, 64], ['SN', 'SN', -1], ['LS', null, 37], ['LI', null, 84],
+  ['MN', null, 204], ['SLM', null, 18], ['ME', 'ME', 199], ['MB1', null, 176], ['MB2', null, 136]
+];
+function poligonosDF(d, vista){
+  const f = d.lm; if (!f) return [];
+  const hh = dist(f[10], f[152]), cima = { x:(f[152].x - f[168].x) / dist(f[152], f[168]), y:(f[152].y - f[168].y) / dist(f[152], f[168]) };
+  const desce = (q, k, tras = { x:0, y:0 }, kt = 0) => ({ x:q.x + cima.x * hh * k + tras.x * hh * kt, y:q.y + cima.y * hh * k + tras.y * hh * kt });
+  const lados = vista === 'perfil' ? [ladoVisivel(d)] : ['D', 'E'];
+  const out = [];
+  lados.forEach(L => {
+    const P = i => f[IDX(L, i)];
+    ZONAS_DF.forEach(([rot, cor, k, idx]) => out.push({ rot, cor, k, pts:idx.map(P) }));
+    // 2.1: abaixo do ângulo, ao longo do pescoço
+    const tv = { x:P(234).x - f[1].x, y:P(234).y - f[1].y }, tn = Math.hypot(tv.x, tv.y) || 1, tras = { x:tv.x / tn, y:tv.y / tn };
+    out.push({ rot:'2.1', cor:'#e8457a', k:'z21', pts:[P(172), P(136), desce(P(136), 0.42), desce(P(172), 0.55, tras, 0.06)] });
+  });
+  // 1: submento / cervical
+  if (vista === 'perfil'){
+    const L = lados[0], P = i => f[IDX(L, i)], pt = d.pts || {};
+    const frente = [pt.mento, pt.cervical, pt.pescoco].filter(Boolean);
+    out.push({ rot:'1', cor:'#7d8a5a', k:'z1', pts:[P(136), P(150), P(149), P(176), P(148), f[152], ...frente, desce(P(136), 0.42)] });
+  } else {
+    const borda = [136, 150, 149, 176, 148].map(i => f[i]).concat([f[152]], [377, 400, 378, 379, 365].map(i => f[i]));
+    out.push({ rot:'1', cor:'#7d8a5a', k:'z1', pts:[...borda, desce(f[365], 0.28), desce(f[152], 0.30), desce(f[136], 0.28)] });
+  }
+  return out;
+}
+function desenharMapa(cx, d, vista, u, texto){
+  const zs = poligonosDF(d, vista); if (!zs.length) return;
+  const ordem = ['1', '2.1', '2', '4', '3', '5', '6'];
+  zs.sort((a, b) => ordem.indexOf(a.rot) - ordem.indexOf(b.rot)).forEach(z => {
+    const ativo = A.sim[z.k] > 0;
+    cx.beginPath(); z.pts.forEach((q, i) => i ? cx.lineTo(q.x, q.y) : cx.moveTo(q.x, q.y)); cx.closePath();
+    if (z.cor){ cx.globalAlpha = ativo ? 0.30 + A.sim[z.k] * 0.30 : 0.22; cx.fillStyle = z.cor; cx.fill(); cx.globalAlpha = 1; }
+    cx.setLineDash(z.cor ? [] : [6 * u, 4 * u]); cx.lineWidth = (ativo ? 2 : 1.2) * u; cx.strokeStyle = z.cor || '#111'; cx.stroke(); cx.setLineDash([]);
+    const c = z.pts.reduce((a, q) => ({ x:a.x + q.x / z.pts.length, y:a.y + q.y / z.pts.length }), { x:0, y:0 });
+    texto(z.rot, { x:c.x - 5 * u, y:c.y + 5 * u }, '#ffffff');
+  });
+  if (vista !== 'frente' || !d.lm) return;
+  const f = d.lm;
+  CODIGOS.forEach(([cod, k, i]) => {
+    const q = i < 0 ? (() => { const m = mid(f[129], f[61]); return { x:m.x - dist(f[234], f[454]) * 0.03, y:m.y }; })() : f[i];
+    const ativo = k && A.sim[k] > 0;
+    cx.beginPath(); cx.fillStyle = ativo ? '#4fb3a9' : 'rgba(255,255,255,.85)'; cx.arc(q.x, q.y, 3 * u, 0, Math.PI * 2); cx.fill();
+    texto(cod, { x:q.x + 5 * u, y:q.y - 4 * u }, ativo ? '#4fb3a9' : '#ffffff');
+  });
+}
+
+const simAtiva = () => Object.values(A.sim).some(x => x);
 
 // Regiões de sombra (olheira e sulco): clareia de leve a sombra, simulando profundidade corrigida
 function luzes(vista){
   const d = A.dados[vista]; if (!d || !d.lm || vista !== 'frente' || A.antes) return [];
-  const s = A.sim.frente, lm = d.lm, out = [];
+  const s = efeitos('frente'), lm = d.lm, out = [];
   const w = dist(lm[234], lm[454]), meio = lm[168].x;
   if (s.olheira) [[33, 133, 145], [263, 362, 374]].forEach(([a, b, c]) => {
     const ew = dist(lm[a], lm[b]);
@@ -280,7 +358,7 @@ function iluminar(img, W, H, ls){
 /* ---------- Pontos com a simulação aplicada ---------- */
 function alcas(vista){
   const d = A.dados[vista]; if (!d || !d.pts) return [];
-  const p = d.pts, s = A.sim[vista], px = mm => mm / d.escala;
+  const p = d.pts, s = efeitos(vista), px = mm => mm / d.escala;
   const h = [];
   if (vista === 'perfil'){
     if (s.mento){
@@ -295,6 +373,10 @@ function alcas(vista){
       h.push({ x:p.cervical.x, y:p.cervical.y, dx, dy, r:a * 0.45, ponto:'cervical' });
       const m = mid(p.mento, p.cervical);
       h.push({ x:m.x, y:m.y, dx:dx * 0.55, dy:dy * 0.55, r:a * 0.35 });
+    }
+    if (d.lm && s.jowlP){         // zona 4 no perfil: a borda da mandíbula sobe
+      const lado = ladoVisivel(d), up = px(2.5) * s.jowlP, f = d.lm;
+      [IDX(lado, 150), IDX(lado, 149), IDX(lado, 136)].forEach(i => h.push({ x:f[i].x, y:f[i].y, dx:0, dy:-up, r:dist(p.subnasal, p.mento) * 0.45 }));
     }
   } else {
     const lm = d.lm, w = dist(p.zigD, p.zigE), meio = lm ? lm[168].x : (p.zigD.x + p.zigE.x) / 2;
@@ -316,6 +398,18 @@ function alcas(vista){
       h.push({ x:p.gonD.x, y:p.gonD.y, dx:inn, dy:-up, r:w * 0.10, ponto:'gonD' });
       h.push({ x:p.gonE.x, y:p.gonE.y, dx:-inn, dy:-up, r:w * 0.10, ponto:'gonE' });
       if (lm) [lm[136], lm[365]].forEach(q => h.push({ x:q.x, y:q.y, dx:-lado(q) * inn, dy:-up, r:w * 0.09 }));
+    }
+    if (lm && s.angulo){          // zona 2: contorno posterior do ramo recolhe
+      const inn = px(2) * s.angulo;
+      [lm[132], lm[361], lm[58], lm[288]].forEach(q => h.push({ x:q.x, y:q.y, dx:-lado(q) * inn, dy:0, r:w * 0.08 }));
+    }
+    if (lm && s.lateral){         // zona 5: face lateral do zigoma recolhe
+      const inn = px(1.5) * s.lateral;
+      [lm[234], lm[454], lm[227], lm[447]].forEach(q => h.push({ x:q.x, y:q.y, dx:-lado(q) * inn, dy:0, r:w * 0.08 }));
+    }
+    if (lm && s.pescoco){         // zona 2.1: contorno lateral do pescoço abaixo do ângulo
+      const inn = px(2.5) * s.pescoco, hh = dist(lm[10], lm[152]);
+      [lm[172], lm[397]].forEach(q => h.push({ x:q.x, y:q.y + hh * 0.18, dx:-lado(q) * inn, dy:0, r:w * 0.10 }));
     }
     if (lm && s.submento){        // retirar: o contorno de baixo do queixo sobe
       const up = px(2.5) * s.submento;
@@ -535,6 +629,7 @@ function desenhar(){
         break; }
     }
   });
+  if (A.mapa) desenharMapa(cx, d, A.vista, u, texto);
   // Grade de terços e quintos (frente)
   if (A.grade && A.vista === 'frente' && p.zigD){
     const topo = d.lm ? d.lm[10] : { x:p.glabela.x, y:p.glabela.y - (p.subnasal.y - p.glabela.y) };
@@ -618,6 +713,7 @@ const ESTILO = `
 .dfa-sim label{display:flex;justify-content:space-between;font-weight:600;font-size:14px}
 .dfa-sim input[type=range]{width:100%;accent-color:var(--acento)}
 .dfa-sim select{width:100%;padding:10px;border-radius:8px;border:1px solid var(--linha);background:var(--cartao);color:var(--fg);font:inherit}
+.dfa-grupo{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--fg2);margin:6px 0 0;font-weight:700}
 .dfa-sim .acoes{display:flex;flex-wrap:wrap;gap:8px}
 .dfa-chip{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:2px 8px;border-radius:999px;margin-left:6px;vertical-align:middle}
 .dfa-chip.retirar{background:color-mix(in srgb,var(--erro) 18%,transparent);color:var(--erro)}
@@ -648,6 +744,7 @@ function montarTela(){
       <button class="dfa-btn" id="dfa-ajustar" aria-pressed="false">Ajustar pontos</button>
       <button class="dfa-btn" id="dfa-antes" aria-pressed="false">Segure para ver o antes</button>
       <button class="dfa-btn" id="dfa-todas">Mostrar todas as linhas</button>
+      <button class="dfa-btn" id="dfa-mapa" aria-pressed="false">Mapa Drawn Face</button>
       <button class="dfa-btn" id="dfa-grade" aria-pressed="false">Terços e quintos</button>
       <button class="dfa-btn" id="dfa-desenhar" aria-pressed="false">Desenho livre</button>
       <span class="dfa-cores" id="dfa-cores" hidden>
@@ -667,6 +764,7 @@ function montarTela(){
   $('#dfa-voltar').onclick = () => { s.hidden = true; A.aoVoltar && A.aoVoltar(); };
   s.querySelectorAll('.dfa-aba').forEach(b => b.onclick = () => trocarVista(b.dataset.v));
   $('#dfa-ajustar').onclick = () => { A.ajustando = !A.ajustando; if (A.ajustando) A.desenhando = false; sincronizarBotoes(); pedirDesenho(); };
+  $('#dfa-mapa').onclick = () => { A.mapa = !A.mapa; sincronizarBotoes(); pedirDesenho(); };
   $('#dfa-grade').onclick = () => { A.grade = !A.grade; sincronizarBotoes(); pedirDesenho(); };
   $('#dfa-desenhar').onclick = () => { A.desenhando = !A.desenhando; if (A.desenhando) A.ajustando = false; sincronizarBotoes(); pedirDesenho(); };
   s.querySelectorAll('.dfa-cor').forEach(b => b.onclick = () => { A.corTraco = b.dataset.cor; s.querySelectorAll('.dfa-cor').forEach(c => c.setAttribute('aria-pressed', String(c === b))); });
@@ -708,6 +806,7 @@ function montarTela(){
 function sincronizarBotoes(){
   $('#dfa-ajustar').setAttribute('aria-pressed', String(A.ajustando));
   $('#dfa-grade').setAttribute('aria-pressed', String(A.grade));
+  $('#dfa-mapa').setAttribute('aria-pressed', String(A.mapa));
   $('#dfa-grade').hidden = A.vista !== 'frente';
   $('#dfa-desenhar').setAttribute('aria-pressed', String(A.desenhando));
   $('#dfa-cores').hidden = !A.desenhando;
@@ -743,12 +842,12 @@ const harmoniaDe = ms => { const ok = ms.filter(m => !m.estimado); return ok.len
 function atualizarLista(){
   const lista = $('#dfa-lista'), d = A.dados[A.vista];
   const ms = d ? medidas(A.vista) : [];
-  const plano = d && d.pts && !A.antes && simAtiva(A.vista);
+  const plano = d && d.pts && !A.antes && simAtiva();
   const base = plano ? Object.fromEntries(medidasAntes(A.vista).map(m => [m.id, m])) : {};
   // Harmonia: média das duas vistas disponíveis
   const todas = ['frente', 'perfil'].flatMap(v => A.dados[v] ? medidas(v) : []).filter(m => !m.estimado);
   const h = todas.length ? todas.reduce((s, m) => s + m.nota, 0) / todas.length : null;
-  const algumPlano = !A.antes && ['frente', 'perfil'].some(v => A.dados[v] && simAtiva(v));
+  const algumPlano = !A.antes && simAtiva();
   const h0 = algumPlano ? harmoniaDe(['frente', 'perfil'].flatMap(v => A.dados[v] ? medidasAntes(v) : [])) : null;
   $('#dfa-harm').innerHTML = h == null ? '—' : (h0 != null && Math.abs(h0 - h) >= 0.05 ? `${fmt(h0)}<small> → </small>` : '') + `${fmt(h)}<small> / 10</small>`;
   $('#dfa-harm-txt').textContent = h == null ? '' : `média de ${todas.length} medidas${A.antes ? ' · antes do planejamento' : algumPlano ? ' · atual → planejada' : ''}`;
@@ -785,7 +884,7 @@ function atualizarLista(){
 const valorTxt = (r, v) => r[6] === 'mm' ? `${fmt(v)} mm` : `${Math.round(v * 100)}%`;
 function acoesDoPlano(){
   const out = [];
-  ['frente', 'perfil'].forEach(v => { if (!A.dados[v]) return; REGIOES[v].forEach(r => { const x = A.sim[v][r[0]]; if (x) out.push({ vista:v, nome:r[1], acao:r[2], txt:`${ACAO[r[2]]} · ${valorTxt(r, x)}` }); }); });
+  ITENS.forEach(r => { const x = A.sim[r[0]]; if (x) out.push({ nome:r[1], acao:r[2], txt:`${ACAO[r[2]]} · ${valorTxt(r, x)}` }); });
   return out;
 }
 
@@ -793,29 +892,32 @@ function montarSimulacao(){
   const box = $('#dfa-sim'), d = A.dados[A.vista];
   box.hidden = !d || !d.pts;
   if (box.hidden) return;
-  const s = A.sim[A.vista];
+  const s = A.sim;
   box.innerHTML = `<h2>Planejamento</h2>
     <div class="linha"><label for="dfa-tecnica"><span>Modelo de técnica</span></label>
-      <select id="dfa-tecnica"><option value="">Personalizado</option>${Object.keys(TECNICAS).map(t => `<option></option>`).join('')}</select></div>`;
+      <select id="dfa-tecnica"><option value="">Personalizado</option>${Object.keys(TECNICAS).map(() => `<option></option>`).join('')}</select></div>`;
   const sel = box.querySelector('select');
   Object.keys(TECNICAS).forEach((t, i) => { const o = sel.options[i + 1]; o.value = t; o.textContent = t; });
   sel.value = A.tecnica;
   sel.onchange = () => {
     A.tecnica = sel.value;
-    if (A.tecnica){ const t = TECNICAS[A.tecnica]; ['frente', 'perfil'].forEach(v => Object.assign(A.sim[v], t[v])); }
+    if (A.tecnica) Object.assign(A.sim, TECNICAS[A.tecnica]);
     montarSimulacao(); pedirDesenho(); atualizarLista();
   };
-  REGIOES[A.vista].forEach(r => {
-    const [k, nome, acao, min, max, passo] = r;
-    const l = document.createElement('div'); l.className = 'linha';
-    l.innerHTML = `<label for="dfa-s-${k}"><span><span class="n"></span><span class="dfa-chip ${acao}"></span></span><span class="v"></span></label><input type="range" id="dfa-s-${k}" min="${min}" max="${max}" step="${passo}" value="${s[k]}">`;
-    l.querySelector('.n').textContent = nome; l.querySelector('.dfa-chip').textContent = ACAO[acao]; l.querySelector('.v').textContent = valorTxt(r, s[k]);
-    l.querySelector('input').oninput = e => {
-      s[k] = parseFloat(e.target.value); l.querySelector('.v').textContent = valorTxt(r, s[k]);
-      if (A.tecnica){ A.tecnica = ''; sel.value = ''; }
-      pedirDesenho(); atualizarLista();
-    };
-    box.append(l);
+  GRUPOS.forEach(g => {
+    const h = document.createElement('h3'); h.className = 'dfa-grupo'; h.textContent = g.titulo; box.append(h);
+    g.itens.forEach(r => {
+      const [k, nome, acao, min, max, passo] = r;
+      const l = document.createElement('div'); l.className = 'linha';
+      l.innerHTML = `<label for="dfa-s-${k}"><span><span class="n"></span><span class="dfa-chip ${acao}"></span></span><span class="v"></span></label><input type="range" id="dfa-s-${k}" min="${min}" max="${max}" step="${passo}" value="${s[k]}">`;
+      l.querySelector('.n').textContent = nome; l.querySelector('.dfa-chip').textContent = ACAO[acao]; l.querySelector('.v').textContent = valorTxt(r, s[k]);
+      l.querySelector('input').oninput = e => {
+        s[k] = parseFloat(e.target.value); l.querySelector('.v').textContent = valorTxt(r, s[k]);
+        if (A.tecnica){ A.tecnica = ''; sel.value = ''; }
+        pedirDesenho(); atualizarLista();
+      };
+      box.append(l);
+    });
   });
   const acoes = document.createElement('div'); acoes.className = 'acoes';
   const zerar = document.createElement('button'); zerar.className = 'dfa-btn'; zerar.textContent = 'Zerar planejamento';
@@ -830,7 +932,7 @@ async function baixarPlano(){
   const d = A.dados[A.vista], cv = $('#dfa-canvas'); if (!d) return;
   A.antes = false; desenhar();
   const W = d.W, H = d.H, gap = Math.round(W * 0.02), pad = Math.round(W * 0.04), fs = Math.max(14, Math.round(W * 0.028));
-  const acoes = acoesDoPlano().filter(a => a.vista === A.vista);
+  const acoes = acoesDoPlano();
   const ms = medidas(A.vista), base = Object.fromEntries(medidasAntes(A.vista).map(m => [m.id, m]));
   const linhas = [
     ...acoes.map(a => `${a.nome}: ${a.txt}`),
@@ -867,7 +969,7 @@ export async function abrirAnalise({ frente, perfil, paciente, config, mostrar, 
   mostrar && mostrar('analise');
   $('#tela-analise').hidden = false; window.scrollTo(0, 0);
   A.dados = { frente:null, perfil:null }; A.sim = SIM_VAZIO(); A.tecnica = ''; A.sel = null; A.ajustando = false;
-  A.grade = false; A.desenhando = false; A.desenhos = { frente:[], perfil:[] }; A.traco = null;
+  A.grade = false; A.mapa = false; A.desenhando = false; A.desenhos = { frente:[], perfil:[] }; A.traco = null;
   sincronizarBotoes();
   A.vista = frente || !perfil ? 'frente' : 'perfil';
   document.querySelectorAll('.dfa-aba').forEach(b => b.setAttribute('aria-selected', String(b.dataset.v === A.vista)));
