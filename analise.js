@@ -1,5 +1,5 @@
 /* =====================================================================
-   DF Análise — módulo de análise facial 2D do Photocheck
+   DF Análise — módulo de análise facial 2D do Kaptora System
    Mede a face nas fotos de frente e de perfil a partir dos 478 pontos do
    MediaPipe, desenha cada medida sobre a foto, dá nota de 0 a 10, permite
    ajustar os pontos à mão e simula mento, papada e malar.
