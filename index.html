@@ -207,6 +207,7 @@ h2{font-family:var(--f-display);font-weight:400;font-size:22px;margin:0 0 4px}
 
   <div class="acoes">
     <button class="btn" id="iniciar" disabled>Iniciar avaliação</button>
+    <button class="btn sec" id="analisar-fotos">Já tenho as fotos: analisar</button>
     <span class="status" id="status-modelo"><span class="ponto"></span><span>Preparando o rastreamento facial…</span></span>
   </div>
 
@@ -270,7 +271,8 @@ h2{font-family:var(--f-display);font-weight:400;font-size:22px;margin:0 0 4px}
   </header>
   <div class="grade" id="grade"></div>
   <div class="acoes">
-    <button class="btn" id="baixar">Baixar pacote da sessão (.zip)</button>
+    <button class="btn" id="analisar">Analisar (DF Análise)</button>
+    <button class="btn sec" id="baixar">Baixar pacote da sessão (.zip)</button>
     <button class="btn sec" id="continuar" hidden>Capturar vistas pendentes</button>
     <button class="btn sec" id="nova">Nova avaliação</button>
   </div>
@@ -1086,6 +1088,19 @@ $('#trocar-camera').addEventListener('click', async () => {
   try { await abrirCamera(); } catch(e){ S.facing = S.facing === 'user' ? 'environment' : 'user'; try { await abrirCamera(); } catch(_){} }
 });
 $('#baixar').addEventListener('click', baixarPacote);
+// DF Análise: módulo carregado só quando usado
+async function abrirDFAnalise(origem){
+  const m = await import('./analise.js');
+  const perfil = S.fotos[4] || S.fotos[5];
+  m.abrirAnalise({
+    frente: origem === 'revisao' && S.fotos[0] ? S.fotos[0].blob : null,
+    perfil: origem === 'revisao' && perfil ? perfil.blob : null,
+    paciente: origem === 'revisao' ? S.paciente : ($('#paciente').value.trim() || ''),
+    config: CONFIG, mostrar, aoVoltar: () => mostrar(origem)
+  });
+}
+$('#analisar').addEventListener('click', () => abrirDFAnalise('revisao'));
+$('#analisar-fotos').addEventListener('click', () => abrirDFAnalise('inicio'));
 $('#continuar').addEventListener('click', () => {
   const pend = VISTAS.map((_, i) => i).filter(i => !S.fotos[i]);
   S.puladas = new Set(); S.tentativasPulo = {};
