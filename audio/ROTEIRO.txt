@@ -103,13 +103,13 @@ Depois mande os MP3 aqui no chat. Total: 39 arquivos.
     Centralize o rosto na moldura.
 
 34. corr-escuro.mp3
-    Está escuro. Vire-se de frente para a luz.
+    Está escuro. Aumente a luz.
 
 35. corr-luz-forte.mp3
-    A luz está forte demais no rosto. Afaste-se um pouco dela.
+    A luz está forte demais. Diminua um pouco.
 
 36. corr-luz-lado.mp3
-    A luz está batendo de um lado só. Vire-se de frente para ela.
+    A luz está mais forte de um lado. Equilibre as duas luzes.
 
 37. corr-parada.mp3
     Fique parada um instante.

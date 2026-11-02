@@ -305,9 +305,9 @@ const CONFIG = {
   distancia: [0.32, 0.72],  // altura do rosto (testa ao queixo) / altura do quadro
   centro: 0.12,             // desvio máximo do centro do quadro
   esperaSuaveMs: 1500,      // luz e foco não travam o disparo: com o resto certo por 1,5 s, a foto sai
-  brilho: [70, 210],        // brilho médio do rosto, 0–255
-  estouro: 0.04,            // fração máxima de pixels estourados
-  difLados: 0.15,           // diferença máxima de luz entre os lados do rosto
+  brilho: [55, 215],        // brilho médio do rosto, 0–255
+  estouro: 0.06,            // fração máxima de pixels estourados
+  difLados: 0.25,           // diferença máxima de luz entre os lados do rosto
   foco: 8,                  // variância mínima do Laplaciano (nitidez)
   olhoFechado: 0.5, sorrisoNeutro: 0.35, sorrisoAmplo: 0.5, bocaAberta: 0.3
 };
@@ -528,9 +528,9 @@ function avaliar(vista, d, m){
   else {
     const frontal = Math.abs((vista.yaw[0]+vista.yaw[1])/2) < 10;
     let msgLuz = null;
-    if (m.brilho < CONFIG.brilho[0]) msgLuz = 'Está escuro. Vire-se de frente para a luz.';
-    else if (m.brilho > CONFIG.brilho[1] || m.estouro > CONFIG.estouro) msgLuz = 'A luz está forte demais no rosto. Afaste-se um pouco dela.';
-    else if (frontal && m.difLados > CONFIG.difLados) msgLuz = 'A luz está batendo de um lado só. Vire-se de frente para ela.';
+    if (m.brilho < CONFIG.brilho[0]) msgLuz = 'Está escuro. Aumente a luz.';
+    else if (m.brilho > CONFIG.brilho[1] || m.estouro > CONFIG.estouro) msgLuz = 'A luz está forte demais. Diminua um pouco.';
+    else if (frontal && m.difLados > CONFIG.difLados) msgLuz = 'A luz está mais forte de um lado. Equilibre as duas luzes.';
     marca('luz', !msgLuz, msgLuz);
     marca('foco', m.nitidez >= CONFIG.foco, 'Fique parada um instante.');
   }
@@ -547,7 +547,7 @@ function avaliar(vista, d, m){
   } else marca('olhos', true, null);
   return r;
 }
-const ORDEM = ['rosto','angulo','distancia','centro','luz','expressao','olhos','foco'];
+const ORDEM = ['rosto','angulo','distancia','centro','expressao','olhos','luz','foco'];
 const primeiraFalha = r => ORDEM.map(k => r[k]).find(c => c && !c.ok && c.msg);
 const tudoOk = r => ORDEM.every(k => r[k] && r[k].ok);
 
@@ -582,9 +582,9 @@ const FRASES = [
   ['corr-aproxime', 'Aproxime um pouco o celular.'],
   ['corr-afaste', 'Afaste um pouco o celular.'],
   ['corr-centralize', 'Centralize o rosto na moldura.'],
-  ['corr-escuro', 'Está escuro. Vire-se de frente para a luz.'],
-  ['corr-luz-forte', 'A luz está forte demais no rosto. Afaste-se um pouco dela.'],
-  ['corr-luz-lado', 'A luz está batendo de um lado só. Vire-se de frente para ela.'],
+  ['corr-escuro', 'Está escuro. Aumente a luz.'],
+  ['corr-luz-forte', 'A luz está forte demais. Diminua um pouco.'],
+  ['corr-luz-lado', 'A luz está mais forte de um lado. Equilibre as duas luzes.'],
   ['corr-parada', 'Fique parada um instante.'],
   ['corr-relaxe', 'Relaxe o rosto, sem sorrir.'],
   ['corr-olhos', 'Mantenha os olhos abertos.']
@@ -877,6 +877,13 @@ function processar(res, agora){
 function corrigir(r, agora){
   const falha = primeiraFalha(r); if (!falha) return;
   if (falha.id === 'foco') return;                         // tremor costuma passar sozinho
+  // Luz: avisa no máximo uma vez por vista e nunca quando o resto está certo (a foto sai mesmo assim)
+  if (falha.id === 'luz'){
+    const duro = ['rosto','angulo','distancia','centro','expressao','olhos'].every(k => r[k] && r[k].ok);
+    if (duro || S.luzAvisada === S.atual) return;
+    if (agora - S.inicioVista < 3500 || agora - S.ultimaCorrecao < CONFIG.intervaloCorrecaoMs || falando()) return;
+    S.luzAvisada = S.atual; S.ultimaCorrecao = agora; falar(falha.msg); return;
+  }
   if (agora - S.inicioVista < 3500) return;                // dá tempo para a instrução principal
   const intervalo = KAPTORA.ativa ? 5000 : CONFIG.intervaloCorrecaoMs; // na conversa, corrige com menos insistência
   if (agora - S.ultimaCorrecao < intervalo || falando()) return;
