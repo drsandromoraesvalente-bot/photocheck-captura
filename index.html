@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#162d25">
-<title>Photocheck Avaliação Completa</title>
+<title>Kaptora System</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Marcellus&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
@@ -159,7 +159,7 @@ h2{font-family:var(--f-display);font-weight:400;font-size:22px;margin:0 0 4px}
 
 <!-- ================= TELA 1: PREPARO ================= -->
 <main id="tela-inicio" class="coluna">
-  <div class="marca"><span class="selo">DF</span>Photocheck · Avaliação Completa</div>
+  <div class="marca"><span class="selo">K</span>Kaptora System · Avaliação Completa</div>
   <header>
     <h1>Captura facial guiada</h1>
     <p class="lead">Nove vistas padronizadas em menos de dois minutos. A câmera acompanha o ângulo da cabeça e fotografa sozinha quando a posição, a luz e a expressão estão corretas.</p>
@@ -211,7 +211,7 @@ h2{font-family:var(--f-display);font-weight:400;font-size:22px;margin:0 0 4px}
     <span class="status" id="status-modelo"><span class="ponto"></span><span>Preparando o rastreamento facial…</span></span>
   </div>
 
-  <p class="rodape">Photocheck · Drawn Face Academy · Produzido por Aurya Nexus Technologies. As fotos ficam só neste aparelho até você baixar o pacote.</p>
+  <p class="rodape">Kaptora System · Drawn Face Academy · Produzido por Aurya Nexus Technologies. As fotos ficam só neste aparelho até você baixar o pacote.</p>
 </main>
 
 <!-- ================= TELA 2: CAPTURA ================= -->
@@ -264,7 +264,7 @@ h2{font-family:var(--f-display);font-weight:400;font-size:22px;margin:0 0 4px}
 
 <!-- ================= TELA 3: REVISÃO ================= -->
 <main id="tela-revisao" class="coluna" hidden>
-  <div class="marca"><span class="selo">DF</span>Photocheck · Avaliação Completa</div>
+  <div class="marca"><span class="selo">K</span>Kaptora System · Avaliação Completa</div>
   <header>
     <h1 id="rev-titulo">Revisão das fotos</h1>
     <div class="resumo" id="rev-resumo"></div>
@@ -278,7 +278,7 @@ h2{font-family:var(--f-display);font-weight:400;font-size:22px;margin:0 0 4px}
     <button class="btn sec" id="nova">Nova avaliação</button>
   </div>
   <p class="nota">O pacote traz as fotos em resolução máxima (AAAA-MM-DD_paciente_vista-N.jpg), os 478 pontos faciais de cada vista e o registro da sessão com ângulos e checagens. Na versão integrada, ele sobe sozinho para o Drive da clínica e aparece na ficha do Vox Clínica.</p>
-  <p class="rodape">Photocheck · Drawn Face Academy · Produzido por Aurya Nexus Technologies</p>
+  <p class="rodape">Kaptora System · Drawn Face Academy · Produzido por Aurya Nexus Technologies</p>
 </main>
 
 <script src="./lib/jszip.min.js"></script>
@@ -1067,7 +1067,7 @@ async function baixarPacote(){
       dados.file(nome + '_pontos.json', JSON.stringify({ vista:VISTAS[i].n, nome:VISTAS[i].nome, formato:'[x, y, z] normalizados (MediaPipe Face Landmarker, 478 pontos)', pontos:f.dados.pontos }));
     });
     const sessao = {
-      app:'Photocheck · Avaliação Completa', versaoApp:CONFIG.versao, paciente:S.paciente, profissional:S.operador || null,
+      app:'Kaptora System · Avaliação Completa', versaoApp:CONFIG.versao, paciente:S.paciente, profissional:S.operador || null,
       data, inicio:S.inicio && S.inicio.toISOString(), fim:S.fim && S.fim.toISOString(),
       modo:S.modo, camera:S.facing === 'user' ? 'frontal' : 'traseira', aparelho:navigator.userAgent,
       consentimentoLGPD:{ aceito:true, registradoEm:S.consentimentoEm },
