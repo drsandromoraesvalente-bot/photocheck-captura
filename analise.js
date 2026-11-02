@@ -759,7 +759,8 @@ function montarTela(){
     <div class="dfa-harmonia"><span class="t">Harmonia</span><span class="n" id="dfa-harm">—</span><span class="dfa-sub" id="dfa-harm-txt"></span></div>
     <div class="dfa-lista" id="dfa-lista"></div>
     <section class="dfa-sim" id="dfa-sim"></section>
-    <p class="dfa-nota-legal">Análise de apoio à consulta. As medidas são estimadas a partir de foto 2D, com a íris como régua (11,7 mm), e devem ser conferidas pelo profissional. A simulação é ilustrativa e educativa: não é promessa de resultado.</p>`;
+    <p class="dfa-nota-legal">Análise de apoio à consulta. As medidas são estimadas a partir de foto 2D, com a íris como régua (11,7 mm), e devem ser conferidas pelo profissional. A simulação é ilustrativa e educativa: não é promessa de resultado.</p>
+    <p class="dfa-nota-legal">DF Análise · Produzido por Aurya Nexus Technologies</p>`;
   document.body.append(s);
   $('#dfa-voltar').onclick = () => { s.hidden = true; A.aoVoltar && A.aoVoltar(); };
   s.querySelectorAll('.dfa-aba').forEach(b => b.onclick = () => trocarVista(b.dataset.v));
@@ -952,7 +953,7 @@ async function baixarPlano(){
   c.font = `500 ${fs}px Manrope, system-ui, sans-serif`; c.fillStyle = '#f9f5ed';
   (linhas.length ? linhas : ['Nenhuma ação planejada nesta vista.']).forEach(t => { c.fillText(t, pad, y); y += fs * 1.6; });
   c.font = `italic 500 ${Math.round(fs * 0.75)}px Manrope, system-ui, sans-serif`; c.fillStyle = 'rgba(249,245,237,.7)';
-  c.fillText(`Simulação ilustrativa e educativa, não é promessa de resultado. ${new Date().toLocaleDateString('pt-BR')}`, pad, y + fs * 0.4);
+  c.fillText(`Simulação ilustrativa e educativa, não é promessa de resultado. ${new Date().toLocaleDateString('pt-BR')} · Produzido por Aurya Nexus Technologies`, pad, y + fs * 0.4);
   const blob = await new Promise(r => out.toBlob(r, 'image/jpeg', 0.92));
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
   a.download = `plano-df-${A.vista}-${(A.paciente || 'paciente').replace(/[^\wÀ-ú-]+/g, '_')}.jpg`;
