@@ -302,12 +302,13 @@ const CONFIG = {
   dicaMs: 20000,            // instrução detalhada após 20 s
   pularMs: 40000,           // oferece pular após 40 s
   intervaloCorrecaoMs: 2500,// no máximo uma correção falada a cada 2,5 s
-  distancia: [0.40, 0.64],  // altura do rosto (testa ao queixo) / altura do quadro
-  centro: 0.08,             // desvio máximo do centro do quadro
+  distancia: [0.32, 0.72],  // altura do rosto (testa ao queixo) / altura do quadro
+  centro: 0.12,             // desvio máximo do centro do quadro
+  esperaSuaveMs: 1500,      // luz e foco não travam o disparo: com o resto certo por 1,5 s, a foto sai
   brilho: [70, 210],        // brilho médio do rosto, 0–255
   estouro: 0.04,            // fração máxima de pixels estourados
   difLados: 0.15,           // diferença máxima de luz entre os lados do rosto
-  foco: 14,                 // variância mínima do Laplaciano (nitidez)
+  foco: 8,                  // variância mínima do Laplaciano (nitidez)
   olhoFechado: 0.5, sorrisoNeutro: 0.35, sorrisoAmplo: 0.5, bocaAberta: 0.3
 };
 
@@ -502,12 +503,16 @@ function avaliar(vista, d, m){
   }
   r.rosto = { id:'rosto', ok:true, msg:null };
   const { yaw, pitch, roll } = d.pose;
+  // Tolerância ampliada: em casa (celular na mão) mais folga que no consultório (tripé)
+  const f = S.modo === 'casa' ? 2 : 1.5;
+  const amplia = ([a, b]) => { const c = (a + b) / 2, h = (b - a) / 2 * f; return [c - h, c + h]; };
+  const fy = amplia(vista.yaw), fp = amplia(vista.pitch), fr = vista.roll * f;
   let msgAng = null;
-  if (yaw < vista.yaw[0]) msgAng = 'Gire um pouco para a sua direita.';
-  else if (yaw > vista.yaw[1]) msgAng = 'Gire um pouco para a sua esquerda.';
-  else if (pitch < vista.pitch[0]) msgAng = 'Levante um pouco o queixo.';
-  else if (pitch > vista.pitch[1]) msgAng = 'Abaixe um pouco o queixo.';
-  else if (Math.abs(roll) > vista.roll) msgAng = 'Endireite a cabeça, sem inclinar para o ombro.';
+  if (yaw < fy[0]) msgAng = 'Gire um pouco para a sua direita.';
+  else if (yaw > fy[1]) msgAng = 'Gire um pouco para a sua esquerda.';
+  else if (pitch < fp[0]) msgAng = 'Levante um pouco o queixo.';
+  else if (pitch > fp[1]) msgAng = 'Abaixe um pouco o queixo.';
+  else if (Math.abs(roll) > fr) msgAng = 'Endireite a cabeça, sem inclinar para o ombro.';
   marca('angulo', !msgAng, msgAng);
 
   const [dmin, dmax] = vista.dist || CONFIG.distancia;
@@ -584,12 +589,31 @@ const FRASES = [
 const ID_DA_FRASE = new Map(); FRASES.forEach(([id, t]) => { if (!ID_DA_FRASE.has(t)) ID_DA_FRASE.set(t, id); });
 const SEM_AUDIO = new Set();
 const player = new Audio(); player.preload = 'auto';
+// Os MP3 da Vick ainda podem não existir. Confere uma vez ao abrir a página: sem eles,
+// a voz do celular fala direto, já no toque do botão (exigência do iPhone para liberar a voz).
+let audiosVick = false;
+fetch('./audio/abertura.mp3', { method:'HEAD', cache:'no-store' })
+  .then(r => { audiosVick = r.ok; if (!r.ok) FRASES.forEach(([id]) => SEM_AUDIO.add(id)); })
+  .catch(() => FRASES.forEach(([id]) => SEM_AUDIO.add(id)));
+FRASES.forEach(([id]) => SEM_AUDIO.add(id)); // até a conferência responder, usa a voz do celular
+let vozLiberada = false, canceladoEm = -1e9;
 function falarSintetico(texto){
   if (!('speechSynthesis' in window)) return;
   const u = new SpeechSynthesisUtterance(texto);
-  u.lang = 'pt-BR'; if (vozPt) u.voice = vozPt; u.rate = 1.02; u.pitch = 1.04;
-  speechSynthesis.speak(u);
+  u.lang = 'pt-BR'; if (vozPt) u.voice = vozPt; u.rate = 1.02; u.pitch = 1.04; u.volume = 1;
+  u.onstart = () => { vozLiberada = true; };
+  if (speechSynthesis.paused) speechSynthesis.resume();
+  // iPhone: falar logo depois de um cancelamento às vezes engole a fala; um respiro curto evita isso.
+  // A primeira fala (no toque do botão) sai na hora, para o iPhone liberar a voz.
+  if (vozLiberada && performance.now() - canceladoEm < 60) setTimeout(() => speechSynthesis.speak(u), 80);
+  else speechSynthesis.speak(u);
 }
+// Rede de segurança: se a voz ainda não saiu, o primeiro toque na tela da captura repete a instrução
+document.addEventListener('pointerdown', () => {
+  if (vozLiberada || !S.voz || !S.rodando || VICK.ativa) return;
+  try { speechSynthesis.cancel(); } catch(e){}
+  falarSintetico(VISTAS[S.atual].fala);
+}, { passive:true });
 /* ---------- Vick em conversa livre (agente de voz do ElevenLabs) ----------
    O app não fala sozinho: ele avisa a Vick do que está acontecendo com mensagens [ESTADO]
    e ela conversa com a paciente. Se a conexão cair, volta para os áudios fixos. */
@@ -658,7 +682,7 @@ function falar(texto, interromper=false){
   S.ultimaFala = texto; S.ultimaFalaEm = performance.now();
   if (!S.voz) return;
   if (VICK.ativa){ const msg = estadoParaVick(texto); if (msg) VICK.enviar(msg); return; }
-  if (interromper){ filaFala = null; player.pause(); if ('speechSynthesis' in window) speechSynthesis.cancel(); }
+  if (interromper){ filaFala = null; player.pause(); if ('speechSynthesis' in window){ speechSynthesis.cancel(); canceladoEm = performance.now(); } }
   else if (!player.paused){ filaFala = texto; return; } // espera a fala atual terminar
   tocar(texto);
 }
@@ -835,6 +859,10 @@ function processar(res, agora){
   const ok = tudoOk(r);
   if (S.capturando){ desenhar(d, true, 1); return; }
   if (ok){ if (!S.okDesde) S.okDesde = agora; } else S.okDesde = null;
+  // Checagens "duras" (posição, distância, expressão, olhos) certas: luz e foco viram só aviso
+  const duroOk = ['rosto','angulo','distancia','centro','expressao','olhos'].every(k => r[k] && r[k].ok);
+  if (duroOk && !ok){ if (!S.duroDesde) S.duroDesde = agora; } else S.duroDesde = null;
+  if (!ok && duroOk && agora - S.duroDesde >= CONFIG.esperaSuaveMs){ capturar(false); return; }
   if (ok && VICK.ativa && VICK.posicaoAvisada !== S.atual){ VICK.posicaoAvisada = S.atual; VICK.contexto('[ESTADO] A paciente está na posição certa. A foto vai sair sozinha; se falar, peça só para ficar parada.'); }
   const prog = S.okDesde ? (agora - S.okDesde)/CONFIG.estabilidadeMs : 0;
   desenhar(d, ok, prog);
@@ -895,7 +923,7 @@ async function capturar(manual){
   }
   const r = avaliar(vista, detMelhor, S.metricas);
   // Checagem final na resolução máxima (só no disparo automático)
-  if (!manual && (!detMelhor || !r.angulo.ok || melhorN < CONFIG.foco * 0.8)){
+  if (!manual && (!detMelhor || !r.angulo.ok)){
     S.capturando = false; S.inicioVista = Math.min(S.inicioVista, performance.now() - 3500);
     $('#correcao').textContent = 'Quase. Vamos repetir esta foto, fique parada.';
     falar('Quase. Vamos repetir, fique parada.', true);
