@@ -104,7 +104,10 @@ const A = {
   lm:null,                         // FaceLandmarker em modo imagem
   vista:'frente',
   dados:{ frente:null, perfil:null }, // { img, W, H, original(ImageData), lm, pts, escala, sF, estimados:Set, ok }
-  sim:{ frente:{ malar:0 }, perfil:{ mento:0, papada:0 } },
+  sim:{ frente:{ temporas:0, malar:0, olheira:0, sulco:0, jowls:0, submento:0 }, perfil:{ mento:0, papada:0 } },
+  tecnica:'',                      // modelo de técnica aplicado no planejamento
+  grade:false,                     // grade de terços e quintos (vista de frente)
+  desenhando:false, corTraco:'#ceb78e', desenhos:{ frente:[], perfil:[] }, traco:null,
   sel:null, ajustando:false, antes:false, arrastando:null, renderPendente:false
 };
 
@@ -219,6 +222,61 @@ function encostarNoContorno(d, p, faceH){
   return melhor > 18 ? { x:melhorX, y:p.y } : p;   // só move se a borda for nítida
 }
 
+/* ---------- Planejamento: regiões, ações e modelos de técnica ---------- */
+const SIM_VAZIO = () => ({ frente:{ temporas:0, malar:0, olheira:0, sulco:0, jowls:0, submento:0 }, perfil:{ mento:0, papada:0 } });
+// [chave, nome, ação, mínimo, máximo, passo, unidade]
+const REGIOES = {
+  frente: [
+    ['temporas', 'Têmporas', 'repor', 0, 1, 0.05, '%'],
+    ['malar', 'Malar', 'repor', 0, 1, 0.05, '%'],
+    ['olheira', 'Olheira', 'suavizar', 0, 1, 0.05, '%'],
+    ['sulco', 'Sulco nasogeniano', 'suavizar', 0, 1, 0.05, '%'],
+    ['jowls', 'Linha mandibular / jowls', 'retirar', 0, 1, 0.05, '%'],
+    ['submento', 'Submento (vista de frente)', 'retirar', 0, 1, 0.05, '%']
+  ],
+  perfil: [
+    ['mento', 'Mento', 'projetar', 0, 10, 0.5, 'mm'],
+    ['papada', 'Submento / ângulo cervical', 'retirar', 0, 1, 0.05, '%']
+  ]
+};
+const ACAO = { retirar:'Retirar volume', repor:'Repor volume', projetar:'Projetar', suavizar:'Suavizar sombra' };
+// Modelos de partida (ilustrativos). Os valores devem ser calibrados pelo método Drawn Face.
+const TECNICAS = {
+  'Drawn Face cervicofacial': { frente:{ temporas:.4, malar:.6, olheira:.4, sulco:.3, jowls:.6, submento:.7 }, perfil:{ mento:3, papada:.7 } },
+  'Harmonização clássica': { frente:{ temporas:.4, malar:.5, olheira:.5, sulco:.5, jowls:0, submento:0 }, perfil:{ mento:4, papada:0 } }
+};
+const simAtiva = v => Object.values(A.sim[v] || {}).some(x => x);
+
+// Regiões de sombra (olheira e sulco): clareia de leve a sombra, simulando profundidade corrigida
+function luzes(vista){
+  const d = A.dados[vista]; if (!d || !d.lm || vista !== 'frente' || A.antes) return [];
+  const s = A.sim.frente, lm = d.lm, out = [];
+  const w = dist(lm[234], lm[454]), meio = lm[168].x;
+  if (s.olheira) [[33, 133, 145], [263, 362, 374]].forEach(([a, b, c]) => {
+    const ew = dist(lm[a], lm[b]);
+    out.push({ x:lm[c].x, y:lm[c].y + ew * 0.38, rx:ew * 0.6, ry:ew * 0.22, ang:0, k:s.olheira });
+  });
+  if (s.sulco) [[129, 61], [358, 291]].forEach(([a, b]) => {
+    const P1 = lm[a], P2 = lm[b], m = mid(P1, P2), lado = m.x < meio ? -1 : 1;
+    out.push({ x:m.x + lado * w * 0.02, y:m.y, rx:dist(P1, P2) * 0.6, ry:w * 0.035, ang:Math.atan2(P2.y - P1.y, P2.x - P1.x), k:s.sulco });
+  });
+  return out;
+}
+function iluminar(img, W, H, ls){
+  const o = img.data;
+  ls.forEach(L => {
+    const R = Math.max(L.rx, L.ry) * 2, co = Math.cos(-L.ang), si = Math.sin(-L.ang);
+    const x0 = Math.max(0, Math.floor(L.x - R)), x1 = Math.min(W - 1, Math.ceil(L.x + R));
+    const y0 = Math.max(0, Math.floor(L.y - R)), y1 = Math.min(H - 1, Math.ceil(L.y + R));
+    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++){
+      const dx = x - L.x, dy = y - L.y, u = dx * co - dy * si, v = dx * si + dy * co;
+      const e = (u * u) / (L.rx * L.rx) + (v * v) / (L.ry * L.ry); if (e > 4) continue;
+      const wgt = Math.exp(-e * 1.2) * L.k * 0.35, j = (y * W + x) * 4;
+      for (let c = 0; c < 3; c++) o[j + c] += wgt * (255 - o[j + c]);
+    }
+  });
+}
+
 /* ---------- Pontos com a simulação aplicada ---------- */
 function alcas(vista){
   const d = A.dados[vista]; if (!d || !d.pts) return [];
@@ -238,12 +296,31 @@ function alcas(vista){
       const m = mid(p.mento, p.cervical);
       h.push({ x:m.x, y:m.y, dx:dx * 0.55, dy:dy * 0.55, r:a * 0.35 });
     }
-  } else if (s.malar && p.malarD){
-    const w = dist(p.zigD, p.zigE), up = px(3) * s.malar, out = px(1.5) * s.malar;
-    h.push({ x:p.malarD.x, y:p.malarD.y, dx:-out, dy:-up, r:w * 0.11, ponto:'malarD' });
-    h.push({ x:p.malarE.x, y:p.malarE.y, dx:out, dy:-up, r:w * 0.11, ponto:'malarE' });
-    h.push({ x:p.zigD.x, y:p.zigD.y, dx:-out * 0.5, dy:-up, r:w * 0.10, ponto:'zigD' });
-    h.push({ x:p.zigE.x, y:p.zigE.y, dx:out * 0.5, dy:-up, r:w * 0.10, ponto:'zigE' });
+  } else {
+    const lm = d.lm, w = dist(p.zigD, p.zigE), meio = lm ? lm[168].x : (p.zigD.x + p.zigE.x) / 2;
+    const lado = q => q.x < meio ? -1 : 1;   // -1 = metade esquerda da imagem
+    if (s.malar && p.malarD){
+      const up = px(3) * s.malar, out = px(1.5) * s.malar;
+      h.push({ x:p.malarD.x, y:p.malarD.y, dx:-out, dy:-up, r:w * 0.11, ponto:'malarD' });
+      h.push({ x:p.malarE.x, y:p.malarE.y, dx:out, dy:-up, r:w * 0.11, ponto:'malarE' });
+      h.push({ x:p.zigD.x, y:p.zigD.y, dx:-out * 0.5, dy:-up, r:w * 0.10, ponto:'zigD' });
+      h.push({ x:p.zigE.x, y:p.zigE.y, dx:out * 0.5, dy:-up, r:w * 0.10, ponto:'zigE' });
+    }
+    if (lm && s.temporas){        // repor: o contorno da têmpora expande para fora
+      const out = px(3) * s.temporas;
+      [lm[21], lm[251]].forEach(q => h.push({ x:q.x, y:q.y, dx:lado(q) * out, dy:0, r:w * 0.09 }));
+      [lm[54], lm[284]].forEach(q => h.push({ x:q.x, y:q.y, dx:lado(q) * out * 0.5, dy:0, r:w * 0.08 }));
+    }
+    if (s.jowls){                 // retirar: o contorno da mandíbula recolhe para dentro e sobe
+      const inn = px(3) * s.jowls, up = px(1.5) * s.jowls;
+      h.push({ x:p.gonD.x, y:p.gonD.y, dx:inn, dy:-up, r:w * 0.10, ponto:'gonD' });
+      h.push({ x:p.gonE.x, y:p.gonE.y, dx:-inn, dy:-up, r:w * 0.10, ponto:'gonE' });
+      if (lm) [lm[136], lm[365]].forEach(q => h.push({ x:q.x, y:q.y, dx:-lado(q) * inn, dy:-up, r:w * 0.09 }));
+    }
+    if (lm && s.submento){        // retirar: o contorno de baixo do queixo sobe
+      const up = px(2.5) * s.submento;
+      [lm[148], lm[176], lm[377], lm[400]].forEach(q => h.push({ x:q.x, y:q.y, dx:0, dy:-up, r:w * 0.07 }));
+    }
   }
   return h;
 }
@@ -365,6 +442,11 @@ function deformar(d, hs){
   return out;
 }
 
+function imagemPlanejada(vista){
+  const d = A.dados[vista]; if (A.antes) return d.original;
+  const im = deformar(d, alcas(vista)); iluminar(im, d.W, d.H, luzes(vista)); return im;
+}
+
 /* ---------- Desenho ---------- */
 const COR = { linha:'#ceb78e', forte:'#f9f5ed', ruim:'#e0806e', bom:'#8fd3a8', sombra:'rgba(10,19,16,.55)' };
 function desenhar(){
@@ -376,7 +458,7 @@ function desenhar(){
   const k = largCss / d.W;
   cv.style.height = (d.H * k) + 'px';
   cv.width = Math.round(largCss * dpr); cv.height = Math.round(d.H * k * dpr);
-  const img = A.antes ? d.original : deformar(d, alcas(A.vista));
+  const img = imagemPlanejada(A.vista);
   const tmp = d._tmp || (d._tmp = document.createElement('canvas')); tmp.width = d.W; tmp.height = d.H;
   tmp.getContext('2d').putImageData(img, 0, 0);
   cx.setTransform(dpr * k, 0, 0, dpr * k, 0, 0);
@@ -453,6 +535,32 @@ function desenhar(){
         break; }
     }
   });
+  // Grade de terços e quintos (frente)
+  if (A.grade && A.vista === 'frente' && p.zigD){
+    const topo = d.lm ? d.lm[10] : { x:p.glabela.x, y:p.glabela.y - (p.subnasal.y - p.glabela.y) };
+    // O trichion (linha do cabelo) não é detectado com segurança: os terços médio e inferior
+    // são comparados entre si (ideal 1 : 1); o superior fica como referência a conferir.
+    const ys = [topo.y, p.glabela.y, p.subnasal.y, p.mento.y], alt = ys[3] - ys[1];
+    const x0 = Math.min(p.zigD.x, p.zigE.x) - 18 * u, x1 = Math.max(p.zigD.x, p.zigE.x) + 18 * u;
+    ys.forEach((y, i) => linha({ x:x0, y }, { x:x1, y }, i ? COR.forte : COR.linha, 1, true));
+    texto('Superior: confira a linha do cabelo', { x:x0, y:ys[0] - 6 * u }, COR.linha);
+    [['Médio', 1], ['Inferior', 2]].forEach(([n, i]) => {
+      const pc = (ys[i + 1] - ys[i]) / alt * 100, c = Math.abs(pc - 50) <= 3 ? COR.bom : Math.abs(pc - 50) <= 6 ? COR.linha : COR.ruim;
+      texto(`${n} ${fmt(pc, 0)}%`, { x:x1 + 6 * u, y:(ys[i] + ys[i + 1]) / 2 + 4 * u }, c, 'right');
+    });
+    const xs = [p.zigD, p.olhoD_ext, p.olhoD_int, p.olhoE_int, p.olhoE_ext, p.zigE].map(q => q.x).sort((a, b) => a - b), larg = xs[5] - xs[0];
+    xs.forEach(x => linha({ x, y:ys[0] }, { x, y:ys[3] + 12 * u }, COR.linha, 1, true));
+    for (let i = 0; i < 5; i++){
+      const pc = (xs[i + 1] - xs[i]) / larg * 100, c = Math.abs(pc - 20) <= 2.5 ? COR.bom : Math.abs(pc - 20) <= 5 ? COR.linha : COR.ruim;
+      texto(`${fmt(pc, 0)}%`, { x:(xs[i] + xs[i + 1]) / 2 - 10 * u, y:ys[3] + 28 * u }, c);
+    }
+  }
+  // Desenho livre do profissional
+  (A.desenhos[A.vista] || []).concat(A.traco && A.traco.vista === A.vista ? [A.traco] : []).forEach(t => {
+    if (t.pts.length < 2) return;
+    cx.beginPath(); cx.strokeStyle = t.cor; cx.lineWidth = 3 * u; cx.lineCap = 'round'; cx.lineJoin = 'round';
+    cx.moveTo(t.pts[0].x, t.pts[0].y); t.pts.slice(1).forEach(q => cx.lineTo(q.x, q.y)); cx.stroke();
+  });
   // Pontos arrastáveis
   if (A.ajustando){
     Object.entries(d.pts).forEach(([n, q]) => {
@@ -509,6 +617,17 @@ const ESTILO = `
 .dfa-sim .linha{display:grid;gap:6px}
 .dfa-sim label{display:flex;justify-content:space-between;font-weight:600;font-size:14px}
 .dfa-sim input[type=range]{width:100%;accent-color:var(--acento)}
+.dfa-sim select{width:100%;padding:10px;border-radius:8px;border:1px solid var(--linha);background:var(--cartao);color:var(--fg);font:inherit}
+.dfa-sim .acoes{display:flex;flex-wrap:wrap;gap:8px}
+.dfa-chip{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:2px 8px;border-radius:999px;margin-left:6px;vertical-align:middle}
+.dfa-chip.retirar{background:color-mix(in srgb,var(--erro) 18%,transparent);color:var(--erro)}
+.dfa-chip.repor{background:color-mix(in srgb,var(--ok) 18%,transparent);color:var(--ok)}
+.dfa-chip.projetar{background:color-mix(in srgb,var(--acento) 22%,transparent);color:var(--fg)}
+.dfa-chip.suavizar{background:color-mix(in srgb,var(--alerta) 18%,transparent);color:var(--alerta)}
+.dfa-cores{display:flex;gap:6px;align-items:center}
+.dfa-cor{width:28px;height:28px;border-radius:50%;border:2px solid var(--linha)}
+.dfa-cor[aria-pressed="true"]{border-color:var(--fg);box-shadow:0 0 0 2px var(--cartao) inset}
+.dfa-m .val .seta{color:var(--fg2);font-size:18px;margin:0 4px}
 .dfa-nota-legal{font-size:12px;color:var(--fg2);margin:0}
 .c-bom{color:var(--ok)} .c-medio{color:var(--alerta)} .c-ruim{color:var(--erro)}
 `;
@@ -529,6 +648,14 @@ function montarTela(){
       <button class="dfa-btn" id="dfa-ajustar" aria-pressed="false">Ajustar pontos</button>
       <button class="dfa-btn" id="dfa-antes" aria-pressed="false">Segure para ver o antes</button>
       <button class="dfa-btn" id="dfa-todas">Mostrar todas as linhas</button>
+      <button class="dfa-btn" id="dfa-grade" aria-pressed="false">Terços e quintos</button>
+      <button class="dfa-btn" id="dfa-desenhar" aria-pressed="false">Desenho livre</button>
+      <span class="dfa-cores" id="dfa-cores" hidden>
+        <button class="dfa-cor" data-cor="#ceb78e" style="background:#ceb78e" aria-label="Dourado" aria-pressed="true"></button>
+        <button class="dfa-cor" data-cor="#4fb3a9" style="background:#4fb3a9" aria-label="Verde-água" aria-pressed="false"></button>
+        <button class="dfa-cor" data-cor="#e0806e" style="background:#e0806e" aria-label="Vermelho" aria-pressed="false"></button>
+        <button class="dfa-btn" id="dfa-apagar">Apagar desenho</button>
+      </span>
       <button class="dfa-btn" id="dfa-trocar">Trocar foto</button>
       <input type="file" id="dfa-arquivo" accept="image/*" hidden>
     </div>
@@ -539,7 +666,11 @@ function montarTela(){
   document.body.append(s);
   $('#dfa-voltar').onclick = () => { s.hidden = true; A.aoVoltar && A.aoVoltar(); };
   s.querySelectorAll('.dfa-aba').forEach(b => b.onclick = () => trocarVista(b.dataset.v));
-  $('#dfa-ajustar').onclick = e => { A.ajustando = !A.ajustando; e.currentTarget.setAttribute('aria-pressed', String(A.ajustando)); pedirDesenho(); };
+  $('#dfa-ajustar').onclick = () => { A.ajustando = !A.ajustando; if (A.ajustando) A.desenhando = false; sincronizarBotoes(); pedirDesenho(); };
+  $('#dfa-grade').onclick = () => { A.grade = !A.grade; sincronizarBotoes(); pedirDesenho(); };
+  $('#dfa-desenhar').onclick = () => { A.desenhando = !A.desenhando; if (A.desenhando) A.ajustando = false; sincronizarBotoes(); pedirDesenho(); };
+  s.querySelectorAll('.dfa-cor').forEach(b => b.onclick = () => { A.corTraco = b.dataset.cor; s.querySelectorAll('.dfa-cor').forEach(c => c.setAttribute('aria-pressed', String(c === b))); });
+  $('#dfa-apagar').onclick = () => { A.desenhos[A.vista] = []; pedirDesenho(); };
   const antes = $('#dfa-antes');
   const on = e => { e.preventDefault(); A.antes = true; antes.setAttribute('aria-pressed', 'true'); pedirDesenho(); atualizarLista(); };
   const off = () => { if (!A.antes) return; A.antes = false; antes.setAttribute('aria-pressed', 'false'); pedirDesenho(); atualizarLista(); };
@@ -551,19 +682,35 @@ function montarTela(){
   const cv = $('#dfa-canvas');
   const posFoto = ev => { const r = cv.getBoundingClientRect(), d = A.dados[A.vista]; const k = r.width / d.W; return { x:(ev.clientX - r.left) / k, y:(ev.clientY - r.top) / k, k }; };
   cv.addEventListener('pointerdown', ev => {
+    if (A.desenhando && A.dados[A.vista]){
+      const q = posFoto(ev); A.traco = { vista:A.vista, cor:A.corTraco, pts:[{ x:q.x, y:q.y }] };
+      cv.setPointerCapture(ev.pointerId); ev.preventDefault(); return;
+    }
     if (!A.ajustando) return; const d = A.dados[A.vista]; if (!d || !d.pts) return;
     const q = posFoto(ev); let melhor = null, md = 22 / q.k;
     Object.entries(d.pts).forEach(([n, p]) => { if (/^(iris|palp|pupila|malar)/.test(n)) return; const dd = Math.hypot(p.x - q.x, p.y - q.y); if (dd < md){ md = dd; melhor = n; } });
     if (melhor){ A.arrastando = melhor; cv.setPointerCapture(ev.pointerId); ev.preventDefault(); }
   });
   cv.addEventListener('pointermove', ev => {
+    if (A.traco){ const q = posFoto(ev); A.traco.pts.push({ x:q.x, y:q.y }); pedirDesenho(); return; }
     if (!A.arrastando) return; const d = A.dados[A.vista], q = posFoto(ev);
     d.pts[A.arrastando] = { x:Math.max(0, Math.min(d.W, q.x)), y:Math.max(0, Math.min(d.H, q.y)) };
     d.estimados.delete(A.arrastando); pedirDesenho(); atualizarLista();
   });
-  const solta = () => { A.arrastando = null; };
+  const solta = () => {
+    A.arrastando = null;
+    if (A.traco){ if (A.traco.pts.length > 1) A.desenhos[A.traco.vista].push(A.traco); A.traco = null; pedirDesenho(); }
+  };
   cv.addEventListener('pointerup', solta); cv.addEventListener('pointercancel', solta);
   window.addEventListener('resize', () => { if (!s.hidden) pedirDesenho(); });
+}
+
+function sincronizarBotoes(){
+  $('#dfa-ajustar').setAttribute('aria-pressed', String(A.ajustando));
+  $('#dfa-grade').setAttribute('aria-pressed', String(A.grade));
+  $('#dfa-grade').hidden = A.vista !== 'frente';
+  $('#dfa-desenhar').setAttribute('aria-pressed', String(A.desenhando));
+  $('#dfa-cores').hidden = !A.desenhando;
 }
 
 function trocarVista(v){
@@ -590,14 +737,21 @@ function renderVazio(){
 
 function classeNota(n){ return n >= 7 ? 'c-bom' : n >= 4 ? 'c-medio' : 'c-ruim'; }
 
+function medidasAntes(v){ const a = A.antes; A.antes = true; try { return medidas(v); } finally { A.antes = a; } }
+const harmoniaDe = ms => { const ok = ms.filter(m => !m.estimado); return ok.length ? ok.reduce((t, m) => t + m.nota, 0) / ok.length : null; };
+
 function atualizarLista(){
   const lista = $('#dfa-lista'), d = A.dados[A.vista];
   const ms = d ? medidas(A.vista) : [];
+  const plano = d && d.pts && !A.antes && simAtiva(A.vista);
+  const base = plano ? Object.fromEntries(medidasAntes(A.vista).map(m => [m.id, m])) : {};
   // Harmonia: média das duas vistas disponíveis
   const todas = ['frente', 'perfil'].flatMap(v => A.dados[v] ? medidas(v) : []).filter(m => !m.estimado);
   const h = todas.length ? todas.reduce((s, m) => s + m.nota, 0) / todas.length : null;
-  $('#dfa-harm').innerHTML = h == null ? '—' : `${fmt(h)}<small> / 10</small>`;
-  $('#dfa-harm-txt').textContent = h == null ? '' : `média de ${todas.length} medidas${A.antes ? ' · antes da simulação' : ''}`;
+  const algumPlano = !A.antes && ['frente', 'perfil'].some(v => A.dados[v] && simAtiva(v));
+  const h0 = algumPlano ? harmoniaDe(['frente', 'perfil'].flatMap(v => A.dados[v] ? medidasAntes(v) : [])) : null;
+  $('#dfa-harm').innerHTML = h == null ? '—' : (h0 != null && Math.abs(h0 - h) >= 0.05 ? `${fmt(h0)}<small> → </small>` : '') + `${fmt(h)}<small> / 10</small>`;
+  $('#dfa-harm-txt').textContent = h == null ? '' : `média de ${todas.length} medidas${A.antes ? ' · antes do planejamento' : algumPlano ? ' · atual → planejada' : ''}`;
   const sub = $('#dfa-sub');
   sub.textContent = !d ? 'Escolha uma foto para começar.' : d.ok ? `${A.paciente ? A.paciente + ' · ' : ''}${ms.length} medidas nesta foto. Toque em uma medida para ver a linha e a explicação.`
     : 'Não encontrei o rosto automaticamente. Toque em “Ajustar pontos” e posicione cada ponto na foto.';
@@ -611,7 +765,10 @@ function atualizarLista(){
       <div class="l2"><span class="val"></span><span class="rot ${classeNota(m.nota)}"></span></div>
       <div class="dfa-barra"><span class="ideal" style="left:${pos(m.barra.a)}%;width:${pos(m.barra.b) - pos(m.barra.a)}%"></span><span class="marca" style="left:${pos(m.valor)}%"></span></div>
       <div class="dfa-lados"><span>${m.barra.ladoMin}</span><span>${m.barra.ladoMax}</span></div>`;
-    b.querySelector('.nome').textContent = t.nome; b.querySelector('.val').textContent = m.texto; b.querySelector('.rot').textContent = m.rotulo;
+    b.querySelector('.nome').textContent = t.nome; b.querySelector('.rot').textContent = m.rotulo;
+    const m0 = base[m.id], val = b.querySelector('.val');
+    if (m0 && m0.texto !== m.texto){ val.textContent = m0.texto; const seta = document.createElement('span'); seta.className = 'seta'; seta.textContent = '→'; val.append(seta, document.createTextNode(m.texto)); }
+    else val.textContent = m.texto;
     if (aberto){
       const det = document.createElement('div'); det.className = 'dfa-det';
       det.innerHTML = `${m.estimado && t.manual ? `<p class="dfa-aviso"></p>` : ''}<p></p><p></p><p><strong>Caminho Drawn Face: </strong><span></span></p><p class="ref"></p>`;
@@ -625,28 +782,83 @@ function atualizarLista(){
   });
 }
 
+const valorTxt = (r, v) => r[6] === 'mm' ? `${fmt(v)} mm` : `${Math.round(v * 100)}%`;
+function acoesDoPlano(){
+  const out = [];
+  ['frente', 'perfil'].forEach(v => { if (!A.dados[v]) return; REGIOES[v].forEach(r => { const x = A.sim[v][r[0]]; if (x) out.push({ vista:v, nome:r[1], acao:r[2], txt:`${ACAO[r[2]]} · ${valorTxt(r, x)}` }); }); });
+  return out;
+}
+
 function montarSimulacao(){
   const box = $('#dfa-sim'), d = A.dados[A.vista];
   box.hidden = !d || !d.pts;
   if (box.hidden) return;
   const s = A.sim[A.vista];
-  const controles = A.vista === 'perfil'
-    ? [['mento', 'Projeção do mento', 0, 10, 0.5, v => `${fmt(v)} mm`], ['papada', 'Definição do ângulo cervical', 0, 1, 0.05, v => `${Math.round(v * 100)}%`]]
-    : [['malar', 'Volume e altura do malar', 0, 1, 0.05, v => `${Math.round(v * 100)}%`]];
-  box.innerHTML = `<h2>Simulação</h2>`;
-  controles.forEach(([k, nome, min, max, passo, f]) => {
+  box.innerHTML = `<h2>Planejamento</h2>
+    <div class="linha"><label for="dfa-tecnica"><span>Modelo de técnica</span></label>
+      <select id="dfa-tecnica"><option value="">Personalizado</option>${Object.keys(TECNICAS).map(t => `<option></option>`).join('')}</select></div>`;
+  const sel = box.querySelector('select');
+  Object.keys(TECNICAS).forEach((t, i) => { const o = sel.options[i + 1]; o.value = t; o.textContent = t; });
+  sel.value = A.tecnica;
+  sel.onchange = () => {
+    A.tecnica = sel.value;
+    if (A.tecnica){ const t = TECNICAS[A.tecnica]; ['frente', 'perfil'].forEach(v => Object.assign(A.sim[v], t[v])); }
+    montarSimulacao(); pedirDesenho(); atualizarLista();
+  };
+  REGIOES[A.vista].forEach(r => {
+    const [k, nome, acao, min, max, passo] = r;
     const l = document.createElement('div'); l.className = 'linha';
-    l.innerHTML = `<label for="dfa-s-${k}"><span></span><span class="v"></span></label><input type="range" id="dfa-s-${k}" min="${min}" max="${max}" step="${passo}" value="${s[k]}">`;
-    l.querySelector('label span').textContent = nome; l.querySelector('.v').textContent = f(s[k]);
-    l.querySelector('input').oninput = e => { s[k] = parseFloat(e.target.value); l.querySelector('.v').textContent = f(s[k]); pedirDesenho(); atualizarLista(); };
+    l.innerHTML = `<label for="dfa-s-${k}"><span><span class="n"></span><span class="dfa-chip ${acao}"></span></span><span class="v"></span></label><input type="range" id="dfa-s-${k}" min="${min}" max="${max}" step="${passo}" value="${s[k]}">`;
+    l.querySelector('.n').textContent = nome; l.querySelector('.dfa-chip').textContent = ACAO[acao]; l.querySelector('.v').textContent = valorTxt(r, s[k]);
+    l.querySelector('input').oninput = e => {
+      s[k] = parseFloat(e.target.value); l.querySelector('.v').textContent = valorTxt(r, s[k]);
+      if (A.tecnica){ A.tecnica = ''; sel.value = ''; }
+      pedirDesenho(); atualizarLista();
+    };
     box.append(l);
   });
-  const zerar = document.createElement('button'); zerar.className = 'dfa-btn'; zerar.textContent = 'Zerar simulação';
-  zerar.onclick = () => { Object.keys(s).forEach(k => s[k] = 0); montarSimulacao(); pedirDesenho(); atualizarLista(); };
-  box.append(zerar);
+  const acoes = document.createElement('div'); acoes.className = 'acoes';
+  const zerar = document.createElement('button'); zerar.className = 'dfa-btn'; zerar.textContent = 'Zerar planejamento';
+  zerar.onclick = () => { A.sim = SIM_VAZIO(); A.tecnica = ''; montarSimulacao(); pedirDesenho(); atualizarLista(); };
+  const baixar = document.createElement('button'); baixar.className = 'dfa-btn'; baixar.textContent = 'Baixar plano (imagem)';
+  baixar.onclick = baixarPlano;
+  acoes.append(zerar, baixar); box.append(acoes);
 }
 
-function renderTudo(){ renderVazio(); atualizarLista(); montarSimulacao(); pedirDesenho(); }
+// Exporta: antes | planejado (com as linhas e o desenho como estão na tela) + lista de ações e medidas
+async function baixarPlano(){
+  const d = A.dados[A.vista], cv = $('#dfa-canvas'); if (!d) return;
+  A.antes = false; desenhar();
+  const W = d.W, H = d.H, gap = Math.round(W * 0.02), pad = Math.round(W * 0.04), fs = Math.max(14, Math.round(W * 0.028));
+  const acoes = acoesDoPlano().filter(a => a.vista === A.vista);
+  const ms = medidas(A.vista), base = Object.fromEntries(medidasAntes(A.vista).map(m => [m.id, m]));
+  const linhas = [
+    ...acoes.map(a => `${a.nome}: ${a.txt}`),
+    ...ms.filter(m => base[m.id] && base[m.id].texto !== m.texto).map(m => `${TEXTOS[m.id].nome}: ${base[m.id].texto} → ${m.texto}`)
+  ];
+  const altTxt = pad * 2 + fs * 1.6 * (linhas.length + 2) + fs * 2;
+  const out = document.createElement('canvas'); out.width = W * 2 + gap; out.height = Math.round(H + altTxt);
+  const c = out.getContext('2d');
+  c.fillStyle = '#121614'; c.fillRect(0, 0, out.width, out.height);
+  const tmp = document.createElement('canvas'); tmp.width = W; tmp.height = H; tmp.getContext('2d').putImageData(d.original, 0, 0);
+  c.drawImage(tmp, 0, 0); c.drawImage(cv, W + gap, 0, W, H);
+  c.font = `700 ${fs}px Manrope, system-ui, sans-serif`; c.fillStyle = '#f9f5ed';
+  const rot = (t, x) => { c.lineWidth = fs * 0.25; c.strokeStyle = 'rgba(10,19,16,.7)'; c.strokeText(t, x, pad + fs); c.fillText(t, x, pad + fs); };
+  rot('ANTES', pad); rot('PLANEJADO', W + gap + pad);
+  let y = H + pad + fs;
+  c.fillStyle = '#ceb78e'; c.fillText(`Plano Drawn Face${A.paciente ? ' · ' + A.paciente : ''}${A.tecnica ? ' · ' + A.tecnica : ''}`, pad, y); y += fs * 1.8;
+  c.font = `500 ${fs}px Manrope, system-ui, sans-serif`; c.fillStyle = '#f9f5ed';
+  (linhas.length ? linhas : ['Nenhuma ação planejada nesta vista.']).forEach(t => { c.fillText(t, pad, y); y += fs * 1.6; });
+  c.font = `italic 500 ${Math.round(fs * 0.75)}px Manrope, system-ui, sans-serif`; c.fillStyle = 'rgba(249,245,237,.7)';
+  c.fillText(`Simulação ilustrativa e educativa, não é promessa de resultado. ${new Date().toLocaleDateString('pt-BR')}`, pad, y + fs * 0.4);
+  const blob = await new Promise(r => out.toBlob(r, 'image/jpeg', 0.92));
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = `plano-df-${A.vista}-${(A.paciente || 'paciente').replace(/[^\wÀ-ú-]+/g, '_')}.jpg`;
+  document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  A.ultimoPlano = blob;
+}
+
+function renderTudo(){ renderVazio(); sincronizarBotoes(); atualizarLista(); montarSimulacao(); pedirDesenho(); }
 
 /* ---------- Entrada pública ---------- */
 export async function abrirAnalise({ frente, perfil, paciente, config, mostrar, aoVoltar }){
@@ -654,8 +866,9 @@ export async function abrirAnalise({ frente, perfil, paciente, config, mostrar, 
   montarTela();
   mostrar && mostrar('analise');
   $('#tela-analise').hidden = false; window.scrollTo(0, 0);
-  A.dados = { frente:null, perfil:null }; A.sim = { frente:{ malar:0 }, perfil:{ mento:0, papada:0 } }; A.sel = null; A.ajustando = false;
-  $('#dfa-ajustar').setAttribute('aria-pressed', 'false');
+  A.dados = { frente:null, perfil:null }; A.sim = SIM_VAZIO(); A.tecnica = ''; A.sel = null; A.ajustando = false;
+  A.grade = false; A.desenhando = false; A.desenhos = { frente:[], perfil:[] }; A.traco = null;
+  sincronizarBotoes();
   A.vista = frente || !perfil ? 'frente' : 'perfil';
   document.querySelectorAll('.dfa-aba').forEach(b => b.setAttribute('aria-selected', String(b.dataset.v === A.vista)));
   $('#dfa-sub').textContent = 'Lendo os pontos do rosto…';
@@ -668,4 +881,4 @@ export async function abrirAnalise({ frente, perfil, paciente, config, mostrar, 
 }
 
 // Exposto para testes de calibração
-export const __teste = { A, medidas, montarPontos, carregarFoto };
+export const __teste = { A, medidas, montarPontos, carregarFoto, baixarPlano, TECNICAS };
