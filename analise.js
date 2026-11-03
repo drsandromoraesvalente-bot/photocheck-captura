@@ -676,6 +676,9 @@ const ESTILO = `
 #tela-analise{max-width:760px;margin:0 auto;padding-block:max(20px,env(safe-area-inset-top)) max(40px,env(safe-area-inset-bottom));padding-left:max(16px,env(safe-area-inset-left));padding-right:max(16px,env(safe-area-inset-right));display:grid;gap:18px}
 #tela-analise .dfa-topo{display:flex;align-items:center;gap:12px}
 #tela-analise .dfa-voltar{border:1px solid var(--linha);background:var(--cartao);border-radius:999px;padding:8px 14px;font-weight:700}
+#tela-analise .dfa-voltar{white-space:nowrap;flex:none}
+#tela-analise .dfa-topo .marca{flex-wrap:nowrap;min-width:0}
+#tela-analise .dfa-topo .wordmark b{font-size:20px}
 #tela-analise h1{font-family:var(--f-display);font-weight:400;font-size:clamp(26px,5vw,34px);margin:0;line-height:1.1;text-transform:uppercase;letter-spacing:.04em}
 #tela-analise .dfa-sub{color:var(--fg2);font-size:14px;margin:4px 0 0}
 .dfa-abas{display:flex;gap:6px;border-bottom:1px solid var(--linha)}
@@ -737,8 +740,8 @@ function montarTela(){
   const st = document.createElement('style'); st.textContent = ESTILO; document.head.append(st);
   const s = document.createElement('main'); s.id = 'tela-analise'; s.hidden = true;
   s.innerHTML = `
-    <div class="dfa-topo"><button class="dfa-voltar" id="dfa-voltar">← Voltar</button></div>
-    <header><h1 id="dfa-titulo">Kaptora · Análise</h1><p class="dfa-sub" id="dfa-sub"></p></header>
+    <div class="dfa-topo"><button class="dfa-voltar" id="dfa-voltar">← Voltar</button><div class="marca" style="margin-left:auto"><span class="selo" data-m="selo">K</span><span class="wordmark" data-m="wordmark"><b>Kaptora</b><small>System</small></span></div></div>
+    <header><h1 id="dfa-titulo">Análise facial</h1><p class="dfa-sub" id="dfa-sub"></p></header>
     <div class="dfa-abas" role="tablist">
       <button class="dfa-aba" role="tab" id="dfa-aba-frente" data-v="frente" aria-selected="true">Frente</button>
       <button class="dfa-aba" role="tab" id="dfa-aba-perfil" data-v="perfil" aria-selected="false">Perfil</button>
@@ -973,9 +976,10 @@ export async function abrirAnalise({ frente, perfil, paciente, config, marca:M, 
   A.marca = M || window.MARCA || null;
   montarTela();
   // Marca do cliente (white label)
-  $('#dfa-titulo').textContent = `${marca().produto} · Análise`;
+  $('#dfa-titulo').textContent = 'Análise facial';
   $('#dfa-rodape').textContent = window.MARCA_rodape ? window.MARCA_rodape(marca()) : marca().produto;
   $('#dfa-mapa').hidden = !metodoDF();
+  if (window.MARCA_textos) window.MARCA_textos($('#tela-analise'));
   mostrar && mostrar('analise');
   $('#tela-analise').hidden = false; window.scrollTo(0, 0);
   A.dados = { frente:null, perfil:null }; A.sim = SIM_VAZIO(); A.tecnica = ''; A.sel = null; A.ajustando = false;
