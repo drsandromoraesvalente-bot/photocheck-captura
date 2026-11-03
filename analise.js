@@ -676,7 +676,7 @@ const ESTILO = `
 #tela-analise{max-width:760px;margin:0 auto;padding-block:max(20px,env(safe-area-inset-top)) max(40px,env(safe-area-inset-bottom));padding-left:max(16px,env(safe-area-inset-left));padding-right:max(16px,env(safe-area-inset-right));display:grid;gap:18px}
 #tela-analise .dfa-topo{display:flex;align-items:center;gap:12px}
 #tela-analise .dfa-voltar{border:1px solid var(--linha);background:var(--cartao);border-radius:999px;padding:8px 14px;font-weight:700}
-#tela-analise h1{font-family:var(--f-display);font-weight:400;font-size:clamp(26px,5vw,34px);margin:0;line-height:1.1}
+#tela-analise h1{font-family:var(--f-display);font-weight:400;font-size:clamp(26px,5vw,34px);margin:0;line-height:1.1;text-transform:uppercase;letter-spacing:.04em}
 #tela-analise .dfa-sub{color:var(--fg2);font-size:14px;margin:4px 0 0}
 .dfa-abas{display:flex;gap:6px;border-bottom:1px solid var(--linha)}
 .dfa-aba{border:0;background:none;padding:10px 14px;font-weight:700;color:var(--fg2);border-bottom:2px solid transparent;margin-bottom:-1px}

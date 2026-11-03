@@ -23,6 +23,19 @@
     creditoTecnologia: true                     // "Tecnologia Kaptora System · Aurya Nexus Technologies"
   };
   const CHAVE = 'kaptora-marca', CHAVE_PREVIA = 'kaptora-marca-previa';
+  // Servidor de contas do Kaptora (Supabase). A chave publicável é pública por natureza;
+  // o que protege os dados são as regras de acesso (RLS) no banco.
+  const SB = window.KAPTORA_SUPABASE = { url:'https://vfhayqggbndqfzqvuxbt.supabase.co', chave:'sb_publishable_nyc7oqPxGxXZi0nurJz_AQ_-UxzFs1d' };
+  async function doServidor(id, ms = 4000){
+    const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), ms);
+    try {
+      const r = await fetch(`${SB.url}/rest/v1/rpc/marca_publica`, { method:'POST', signal:ctl.signal,
+        headers:{ apikey:SB.chave, 'Content-Type':'application/json' }, body:JSON.stringify({ p_id:id }) });
+      if (!r.ok) return undefined;
+      return await r.json();                        // null = não existe no servidor
+    } catch(e){ return undefined; }                 // sem internet: undefined
+    finally { clearTimeout(t); }
+  }
   const ler = k => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch(e){ return null; } };
   const gravar = (k, v) => { try { v ? localStorage.setItem(k, JSON.stringify(v)) : localStorage.removeItem(k); } catch(e){} };
   const mesclar = (base, extra) => {
@@ -39,16 +52,34 @@
     if (p === 'padrao'){ gravar(CHAVE, null); return PADRAO; }
     if (p === '__previa') return mesclar(PADRAO, ler(CHAVE_PREVIA));            // pré-visualização do painel do administrador
     if (p){
+      const id = limpar(p), s = await doServidor(id);
+      if (s && s.bloqueada) return mesclar(PADRAO, { id, produto:s.produto || PADRAO.produto, bloqueada:true });
+      if (s){ const m = mesclar(PADRAO, s); m.id = id; gravar(CHAVE, m); return m; }
       try {
-        const r = await fetch(`./marcas/${limpar(p)}.json`, { cache: 'no-cache' });
-        if (r.ok){ const m = mesclar(PADRAO, await r.json()); m.id = limpar(p); gravar(CHAVE, m); return m; }
+        const r = await fetch(`./marcas/${id}.json`, { cache: 'no-cache' });
+        if (r.ok){ const m = mesclar(PADRAO, await r.json()); m.id = id; gravar(CHAVE, m); return m; }
       } catch(e){ console.error('marca', e); }
     }
     const salva = ler(CHAVE);
+    if (salva && salva.id && salva.id !== 'kaptora'){
+      // Confere no servidor se a marca mudou ou se a licença foi suspensa (sem internet, segue com a guardada)
+      const s = await doServidor(salva.id, 2500);
+      if (s && s.bloqueada) return mesclar(PADRAO, { id:salva.id, produto:s.produto || salva.produto, bloqueada:true });
+      if (s){ const m = mesclar(PADRAO, s); m.id = salva.id; gravar(CHAVE, m); return m; }
+    }
     return salva ? mesclar(PADRAO, salva) : PADRAO;
   }
 
   function aplicar(M){
+    if (M.bloqueada){
+      const d = document.createElement('div');
+      d.setAttribute('role', 'alert');
+      d.style.cssText = 'position:fixed;inset:0;z-index:99999;background:#0a1310;color:#f9f5ed;display:grid;place-items:center;padding:24px;text-align:center;font:16px/1.5 Manrope,system-ui,sans-serif';
+      d.innerHTML = '<div style="max-width:420px;display:grid;gap:12px"><div class="k-bloq-nome" style="font:28px Marcellus,serif;text-transform:uppercase;letter-spacing:.04em"></div><p style="margin:0;opacity:.8">O acesso a este sistema está suspenso. Fale com o administrador da sua clínica ou com a Kaptora System para reativar a licença.</p></div>';
+      d.querySelector('.k-bloq-nome').textContent = M.produto || 'Kaptora System';
+      document.body.append(d);
+      return;
+    }
     // Cores da marca, respeitando o modo claro e o escuro
     const P = (M.cores && M.cores.primaria) || PADRAO.cores.primaria, Ac = (M.cores && M.cores.acento) || PADRAO.cores.acento;
     if (P !== PADRAO.cores.primaria || Ac !== PADRAO.cores.acento){

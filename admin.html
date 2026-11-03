@@ -6,6 +6,7 @@
 <meta name="robots" content="noindex, nofollow">
 <title>Kaptora · Administração</title>
 <script src="./marca.js"></script>
+<script src="./lib/supabase-js-2.45.4.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Marcellus&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
@@ -33,7 +34,7 @@ button,input,textarea,select{font:inherit;color:inherit}
 .layout{display:grid;grid-template-columns:260px minmax(0,1fr) 400px;gap:24px;padding:24px max(16px,env(safe-area-inset-left));max-width:1500px;margin:0 auto;align-items:start}
 @media (max-width:1180px){ .layout{grid-template-columns:240px minmax(0,1fr)} .previa{grid-column:1 / -1} }
 @media (max-width:760px){ .layout{grid-template-columns:1fr} }
-h1{font-family:var(--f-display);font-weight:400;font-size:clamp(28px,4vw,38px);margin:0;line-height:1.1}
+h1{font-family:var(--f-display);font-weight:400;font-size:clamp(28px,4vw,38px);margin:0;line-height:1.1;text-transform:uppercase;letter-spacing:.04em}
 h2{font-family:var(--f-display);font-weight:400;font-size:22px;margin:0}
 .sub{color:var(--fg2);margin:4px 0 0;font-size:14px}
 .cartao{border:1px solid var(--linha);background:var(--cartao);border-radius:var(--raio);padding:18px;display:grid;gap:14px}
@@ -72,17 +73,30 @@ h2{font-family:var(--f-display);font-weight:400;font-size:22px;margin:0}
 .previa{position:sticky;top:16px;display:grid;gap:10px}
 .celular{width:100%;max-width:390px;aspect-ratio:390/780;border:10px solid #0a1310;border-radius:36px;overflow:hidden;background:#000;justify-self:center;box-shadow:0 20px 50px rgba(10,19,16,.25)}
 .celular iframe{width:100%;height:100%;border:0;background:#fff}
+#login{min-height:calc(100vh - 70px);display:grid;place-items:center;padding:24px}
+#login .cartao{max-width:420px;width:100%}
+.campo input[type=email]{border:1px solid var(--linha);background:var(--bg);border-radius:8px;padding:10px 12px;min-height:44px;width:100%}
+.quem{font-size:13px;color:var(--fg2)}
 </style>
 </head>
 <body>
 <header class="topo">
   <div class="marca"><span class="selo">K</span>Kaptora System · Administração</div>
-  <div class="acoes"><a class="btn sec" href="./?marca=padrao" target="_blank" rel="noopener">Abrir o app Kaptora</a></div>
+  <div class="acoes" style="align-items:center"><span class="quem" id="quem"></span><a class="btn sec" href="./?marca=padrao" target="_blank" rel="noopener">Abrir o app Kaptora</a><button class="btn sec" id="sair" hidden>Sair</button></div>
 </header>
 
-<div class="layout">
+<section id="login">
+  <div class="cartao">
+    <div><h2>Entrar na administração</h2><p class="sub">Acesso restrito ao super admin da Kaptora System. Você recebe um link de entrada no seu e-mail.</p></div>
+    <div class="campo"><label for="email">E-mail</label><input type="email" id="email" autocomplete="email" placeholder="seu@email.com"></div>
+    <button class="btn" id="entrar">Enviar link de entrada</button>
+    <p class="status" id="status-login" aria-live="polite"></p>
+  </div>
+</section>
+
+<div class="layout" id="painel" hidden>
   <aside class="cartao">
-    <div><h2>Clientes</h2><p class="sub">Marcas white label salvas neste navegador.</p></div>
+    <div><h2>Clientes</h2><p class="sub">Marcas white label no servidor Kaptora.</p></div>
     <div class="clientes" id="clientes"></div>
     <button class="btn" id="nova">Nova marca</button>
     <label class="btn sec" style="text-align:center">Importar arquivo .json<input type="file" id="importar" accept="application/json,.json" hidden></label>
@@ -143,7 +157,7 @@ h2{font-family:var(--f-display);font-weight:400;font-size:22px;margin:0}
 
     <section class="cartao">
       <h2>Contrato</h2>
-      <p class="aviso">Registro comercial do cliente. Ainda não bloqueia o acesso: o controle de licença e cobrança entra com o servidor de contas.</p>
+      <label class="chave"><input type="checkbox" id="f-ativo"><span>Licença ativa<small>Desligada, ou com a validade vencida, o app do cliente abre bloqueado.</small></span></label>
       <div class="grade2">
         <div class="campo"><label for="f-plano">Plano</label><select id="f-plano"><option>Essencial</option><option>Profissional</option><option>Premium</option></select></div>
         <div class="campo"><label for="f-validade">Válido até</label><input type="date" id="f-validade"></div>
@@ -156,12 +170,12 @@ h2{font-family:var(--f-display);font-weight:400;font-size:22px;margin:0}
       <h2>Publicar</h2>
       <div class="acoes">
         <button class="btn" id="salvar">Salvar</button>
-        <button class="btn sec" id="baixar">Baixar arquivo da marca</button>
+        <button class="btn sec" id="baixar">Baixar cópia (.json)</button>
         <button class="btn perigo" id="excluir">Excluir</button>
       </div>
       <p class="status" id="status" aria-live="polite"></p>
       <div class="campo"><label>Link do cliente</label><div class="link" id="link-cliente">—</div>
-        <span class="ajuda">O link passa a funcionar quando o arquivo da marca estiver publicado em <b>marcas/</b> no servidor. O aparelho do cliente guarda a marca depois do primeiro acesso.</span></div>
+        <span class="ajuda">Funciona assim que você salva. Mudanças de marca e de licença chegam ao cliente na próxima vez que ele abrir o app.</span></div>
     </section>
   </main>
 
@@ -174,24 +188,25 @@ h2{font-family:var(--f-display);font-weight:400;font-size:22px;margin:0}
 
 <script>
 const $ = s => document.querySelector(s);
-const LISTA = 'kaptora-admin-marcas', PREVIA = 'kaptora-marca-previa';
+const PREVIA = 'kaptora-marca-previa';
+const sb = supabase.createClient(window.KAPTORA_SUPABASE.url, window.KAPTORA_SUPABASE.chave);
 const PADRAO = window.MARCA_PADRAO;
 const ler = (k, d) => { try { return JSON.parse(localStorage.getItem(k) || 'null') ?? d; } catch(e){ return d; } };
 const gravar = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch(e){ return false; } };
 const slug = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40);
 const copia = o => JSON.parse(JSON.stringify(o));
 
-let marcas = ler(LISTA, {});          // { id: marca }
+let marcas = {};                      // { id: marca } vindas do servidor
 let atual = null, idOriginal = null;
 
 function novaMarca(){
   const m = copia(PADRAO);
   m.id = ''; m.produto = ''; m.clinica = ''; m.subtitulo = 'Avaliação Completa'; m.selo = ''; m.rodape = '';
   m.assistente.nome = 'Kaptora'; m.modulos.metodoDrawnFace = false;
-  m.contrato = { plano:'Essencial', validade:'', responsavel:'', contato:'' };
+  m.contrato = { plano:'Essencial', validade:'', responsavel:'', contato:'', ativo:true };
   return m;
 }
-function completa(m){ const b = copia(PADRAO); const x = Object.assign(b, copia(m)); x.cores = Object.assign({}, PADRAO.cores, m.cores); x.assistente = Object.assign({}, PADRAO.assistente, m.assistente); x.modulos = Object.assign({}, PADRAO.modulos, m.modulos); x.contrato = Object.assign({ plano:'Essencial', validade:'', responsavel:'', contato:'' }, m.contrato); return x; }
+function completa(m){ const b = copia(PADRAO); const x = Object.assign(b, copia(m)); x.cores = Object.assign({}, PADRAO.cores, m.cores); x.assistente = Object.assign({}, PADRAO.assistente, m.assistente); x.modulos = Object.assign({}, PADRAO.modulos, m.modulos); x.contrato = Object.assign({ plano:'Essencial', validade:'', responsavel:'', contato:'', ativo:true }, m.contrato); return x; }
 
 function preencher(m){
   atual = completa(m); idOriginal = m.id || null;
@@ -201,6 +216,7 @@ function preencher(m){
   $('#f-assistente').value = atual.assistente.nome; $('#f-agente').value = atual.assistente.agente; $('#f-saudacao').value = atual.assistente.saudacao;
   Object.keys(PADRAO.modulos).forEach(k => $('#m-' + k).checked = !!atual.modulos[k]);
   $('#f-consentimento').value = atual.consentimento; $('#f-rodape').value = atual.rodape; $('#f-credito').checked = atual.creditoTecnologia !== false;
+  $('#f-ativo').checked = atual.contrato.ativo !== false;
   $('#f-plano').value = atual.contrato.plano; $('#f-validade').value = atual.contrato.validade; $('#f-responsavel').value = atual.contrato.responsavel; $('#f-contato').value = atual.contrato.contato;
   $('#excluir').hidden = !idOriginal;
   ler_form(); listar(); status('');
@@ -223,7 +239,7 @@ function ler_form(){
   Object.keys(PADRAO.modulos).forEach(k => atual.modulos[k] = $('#m-' + k).checked);
   atual.consentimento = $('#f-consentimento').value.trim() || PADRAO.consentimento;
   atual.rodape = $('#f-rodape').value.trim(); atual.creditoTecnologia = $('#f-credito').checked;
-  atual.contrato = { plano:$('#f-plano').value, validade:$('#f-validade').value, responsavel:$('#f-responsavel').value.trim(), contato:$('#f-contato').value.trim() };
+  atual.contrato = { ativo:$('#f-ativo').checked, plano:$('#f-plano').value, validade:$('#f-validade').value, responsavel:$('#f-responsavel').value.trim(), contato:$('#f-contato').value.trim() };
   $('#c-primaria').textContent = atual.cores.primaria; $('#c-acento').textContent = atual.cores.acento;
   const bola = $('#logo-bola'); bola.innerHTML = '';
   if (atual.logo){ const im = document.createElement('img'); im.src = atual.logo; im.alt = 'Logo'; bola.append(im); } else { bola.textContent = atual.selo || (atual.produto || 'K')[0] || 'K'; bola.style.color = atual.cores.acento; }
@@ -249,7 +265,7 @@ function listar(){
     const m = marcas[id], b = document.createElement('button'); b.className = 'cli'; b.setAttribute('aria-current', String(id === idOriginal));
     const bol = document.createElement('span'); bol.className = 'bolinha'; bol.style.background = (m.cores && m.cores.primaria) || '#162d25';
     if (m.logo){ const im = document.createElement('img'); im.src = m.logo; im.alt = ''; bol.append(im); } else bol.textContent = m.selo || (m.produto || id)[0];
-    const t = document.createElement('span'); const st = document.createElement('strong'); st.textContent = m.produto || id; const sm = document.createElement('small'); sm.textContent = `${id} · ${(m.contrato && m.contrato.plano) || '—'}`;
+    const t = document.createElement('span'); const st = document.createElement('strong'); st.textContent = m.produto || id; const sm = document.createElement('small'); sm.textContent = `${id} · ${(m.contrato && m.contrato.plano) || '—'}${m.contrato && m.contrato.ativo === false ? ' · suspensa' : ''}`;
     t.append(st, sm); b.append(bol, t); b.onclick = () => { idEditado = true; preencher(m); };
     box.append(b);
   });
@@ -271,15 +287,29 @@ $('#f-logo').onchange = async e => {
   } catch(err){ status('Não consegui ler essa imagem.', true); }
 };
 $('#tirar-logo').onclick = () => { atual.logo = ''; ler_form(); };
-$('#salvar').onclick = () => {
+// Banco: config (o que o app lê) separada do contrato (só o admin vê)
+function paraLinha(m){
+  const config = copia(m); delete config.contrato; delete config.id;
+  return { id:m.id, config, ativo:m.contrato.ativo !== false, plano:m.contrato.plano, validade:m.contrato.validade || null, responsavel:m.contrato.responsavel || null, contato:m.contrato.contato || null };
+}
+function daLinha(l){ return Object.assign(copia(l.config || {}), { id:l.id, contrato:{ ativo:l.ativo, plano:l.plano, validade:l.validade || '', responsavel:l.responsavel || '', contato:l.contato || '' } }); }
+async function carregarMarcas(){
+  const { data, error } = await sb.from('marcas').select('*').order('id');
+  if (error){ status('Não consegui ler as marcas do servidor: ' + error.message, true); return; }
+  marcas = Object.fromEntries(data.map(l => [l.id, daLinha(l)]));
+}
+$('#salvar').onclick = async () => {
   ler_form();
   if (!atual.produto) return status('Preencha o nome do produto.', true);
   if (!atual.id) return status('Preencha o código do cliente.', true);
   if (atual.id !== idOriginal && marcas[atual.id]) return status('Já existe uma marca com esse código.', true);
-  if (idOriginal && idOriginal !== atual.id) delete marcas[idOriginal];
-  marcas[atual.id] = copia(atual); idOriginal = atual.id;
-  if (!gravar(LISTA, marcas)) return status('Não consegui salvar neste navegador (memória cheia ou bloqueada).', true);
-  $('#titulo').textContent = atual.produto; $('#excluir').hidden = false; listar(); status('Marca salva.');
+  const b = $('#salvar'); b.disabled = true; status('Salvando…');
+  const { error } = await sb.from('marcas').upsert(paraLinha(atual));
+  if (!error && idOriginal && idOriginal !== atual.id) await sb.from('marcas').delete().eq('id', idOriginal);
+  b.disabled = false;
+  if (error) return status('Não salvou: ' + error.message, true);
+  await carregarMarcas(); idOriginal = atual.id;
+  $('#titulo').textContent = atual.produto; $('#excluir').hidden = false; listar(); status('Marca salva e publicada.');
 };
 $('#baixar').onclick = () => {
   ler_form();
@@ -289,12 +319,14 @@ $('#baixar').onclick = () => {
   document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 3000);
   status(`Arquivo ${atual.id}.json baixado. Publique em marcas/ para o link funcionar.`);
 };
-$('#excluir').onclick = () => {
+$('#excluir').onclick = async () => {
   if (!idOriginal) return;
   const b = $('#excluir');
   if (b.dataset.confirmar !== '1'){ b.dataset.confirmar = '1'; b.textContent = 'Toque de novo para excluir'; setTimeout(() => { b.dataset.confirmar = ''; b.textContent = 'Excluir'; }, 4000); return; }
-  delete marcas[idOriginal]; gravar(LISTA, marcas); b.dataset.confirmar = ''; b.textContent = 'Excluir';
-  idEditado = false; preencher(novaMarca()); status('Marca excluída.');
+  b.dataset.confirmar = ''; b.textContent = 'Excluir';
+  const { error } = await sb.from('marcas').delete().eq('id', idOriginal);
+  if (error) return status('Não excluiu: ' + error.message, true);
+  await carregarMarcas(); idEditado = false; preencher(novaMarca()); status('Marca excluída.');
 };
 $('#importar').onchange = async e => {
   const f = e.target.files[0]; e.target.value = ''; if (!f) return;
@@ -302,8 +334,39 @@ $('#importar').onchange = async e => {
   catch(err){ status('Esse arquivo não é uma marca válida.', true); }
 };
 
-const primeira = Object.keys(marcas)[0];
-if (primeira){ idEditado = true; preencher(marcas[primeira]); } else preencher(novaMarca());
+/* ---------- Entrada (link mágico por e-mail) ---------- */
+function statusLogin(t, erro){ const s = $('#status-login'); s.textContent = t; s.style.color = erro ? 'var(--erro)' : 'var(--ok)'; }
+$('#entrar').onclick = async () => {
+  const email = $('#email').value.trim().toLowerCase();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return statusLogin('Digite um e-mail válido.', true);
+  $('#entrar').disabled = true; statusLogin('Enviando…');
+  const { error } = await sb.auth.signInWithOtp({ email, options:{ emailRedirectTo: location.href.split('#')[0].split('?')[0], shouldCreateUser:true } });
+  $('#entrar').disabled = false;
+  if (error) return statusLogin('Não consegui enviar: ' + error.message, true);
+  statusLogin('Pronto. Abra o e-mail neste mesmo aparelho e toque no link de entrada.');
+};
+$('#email').addEventListener('keydown', e => { if (e.key === 'Enter') $('#entrar').click(); });
+$('#sair').onclick = async () => { await sb.auth.signOut(); location.reload(); };
+
+async function entrarNoPainel(sessao){
+  if (!sessao){ $('#login').hidden = false; $('#painel').hidden = true; $('#sair').hidden = true; $('#quem').textContent = ''; return; }
+  const { data:ehAdmin, error } = await sb.rpc('eh_super_admin');
+  $('#quem').textContent = sessao.user.email; $('#sair').hidden = false;
+  if (error || !ehAdmin){
+    $('#login').hidden = false; $('#painel').hidden = true;
+    statusLogin('Este e-mail não tem acesso de administrador.', true); return;
+  }
+  $('#login').hidden = true; $('#painel').hidden = false;
+  await carregarMarcas();
+  const primeira = Object.keys(marcas)[0];
+  if (primeira){ idEditado = true; preencher(marcas[primeira]); } else preencher(novaMarca());
+}
+let jaEntrou = false;
+sb.auth.onAuthStateChange((evento, sessao) => {
+  if (evento === 'SIGNED_OUT'){ jaEntrou = false; entrarNoPainel(null); return; }
+  if (sessao && !jaEntrou){ jaEntrou = true; history.replaceState(null, '', location.pathname); entrarNoPainel(sessao); }
+  if (!sessao && evento === 'INITIAL_SESSION') entrarNoPainel(null);
+});
 </script>
 </body>
 </html>
