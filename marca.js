@@ -92,34 +92,9 @@
     }
     const titulo = document.querySelector('title');
     if (titulo && titulo.dataset.m) titulo.textContent = titulo.dataset.m === 'painel' ? `${M.produto} · Tela ao vivo` : M.produto;
-    estiloMarca();
-    textos(document, M);
-  }
-  // Nome do software no topo: primeira palavra grande, o resto menor (KAPTORA system)
-  function estiloMarca(){
-    if (document.getElementById('marca-base')) return;
-    const st = document.createElement('style'); st.id = 'marca-base';
-    st.textContent = `.wordmark{display:inline-flex;align-items:baseline;gap:8px;line-height:1;white-space:nowrap}
-.wordmark b{font-family:var(--f-display,'Marcellus',serif);font-weight:400;font-size:26px;letter-spacing:.14em;text-transform:uppercase;color:var(--fg)}
-.wordmark small{font-size:11px;font-weight:700;letter-spacing:.24em;text-transform:uppercase;color:var(--acento,var(--ouro))}
-.marca{flex-wrap:wrap;row-gap:4px}
-.marca .selo{width:36px;height:36px;font-size:16px}
-.marca .marca-sub{flex-basis:100%;padding-left:46px;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--fg2)}
-.marca-cap.wordmark b{font-size:15px;color:var(--cap-fg,#f9f5ed)}
-.marca-cap.wordmark small{font-size:9px}`;
-    document.head.prepend(st);
-  }
-  function textos(raiz, M){
-    raiz.querySelectorAll('[data-m]').forEach(el => {
+    document.querySelectorAll('[data-m]').forEach(el => {
       const t = el.dataset.m;
       if (t === 'produto') el.textContent = M.produto;
-      if (t === 'subtitulo'){ el.textContent = M.subtitulo || ''; el.hidden = !M.subtitulo; }
-      if (t === 'wordmark'){
-        const partes = String(M.produto || 'Kaptora').trim().split(/\s+/);
-        el.textContent = ''; const b = document.createElement('b'); b.textContent = partes[0]; el.append(b);
-        if (partes.length > 1){ const sm = document.createElement('small'); sm.textContent = partes.slice(1).join(' '); el.append(sm); }
-        el.setAttribute('aria-label', M.produto);
-      }
       if (t === 'titulo-marca') el.textContent = M.subtitulo ? `${M.produto} · ${M.subtitulo}` : M.produto;
       if (t === 'assistente') el.textContent = M.assistente.nome;
       if (t === 'consentimento') el.textContent = M.consentimento;
@@ -141,10 +116,9 @@
 
   window.MARCA_PADRAO = PADRAO;
   window.MARCA_rodape = MARCA_rodape;
-  window.MARCA_textos = raiz => { if (window.MARCA){ estiloMarca(); textos(raiz || document, window.MARCA); } };
   window.marcaPronta = carregar().then(M => {
     window.MARCA = M;
-    const go = () => { if (/admin\.html$/.test(location.pathname)) estiloMarca(); else aplicar(M); };   // o painel do administrador mantém a cara Kaptora
+    const go = () => { if (!/admin\.html$/.test(location.pathname)) aplicar(M); };   // o painel do administrador mantém a cara Kaptora
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else go();
     return M;
   });
