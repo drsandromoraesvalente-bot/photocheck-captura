@@ -750,7 +750,9 @@ function pararStream(){ if (S.stream){ S.stream.getTracks().forEach(t => t.stop(
 async function abrirCamera(){
   pararStream();
   S.stream = await navigator.mediaDevices.getUserMedia({
-    audio:false, video:{ facingMode:{ ideal:S.facing }, width:{ ideal:1920 }, height:{ ideal:1080 } }
+    audio:false, video:S.cameraId
+      ? { deviceId:{ exact:S.cameraId }, width:{ ideal:1920 }, height:{ ideal:1080 } }      // câmera escolhida (computador, webcam USB, iPhone como webcam)
+      : { facingMode:{ ideal:S.facing }, width:{ ideal:1920 }, height:{ ideal:1080 } }
   });
   video.srcObject = S.stream; await video.play();
   TELA.novaCamera();
@@ -1305,6 +1307,19 @@ $('#btn-voz').addEventListener('click', e => {
   if (!S.voz){ player.pause(); if ('speechSynthesis' in window) speechSynthesis.cancel(); }
 });
 $('#trocar-camera').addEventListener('click', async () => {
+  // Com mais de duas câmeras (computador com webcam USB, iPhone como webcam no Mac), passa por todas
+  let cams = [];
+  try { cams = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'videoinput'); } catch(e){}
+  const movel = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Macintosh/.test(navigator.userAgent));
+  if (!movel && cams.length > 1){
+    const atual = S.stream && S.stream.getVideoTracks()[0] && S.stream.getVideoTracks()[0].getSettings().deviceId;
+    const i = cams.findIndex(c => c.deviceId === atual), prox = cams[(i + 1) % cams.length];
+    S.cameraId = prox.deviceId;
+    try { await abrirCamera(); } catch(e){ S.cameraId = null; try { await abrirCamera(); } catch(_){} }
+    $('#correcao').textContent = 'Câmera: ' + (prox.label || 'câmera ' + ((i + 1) % cams.length + 1));
+    return;
+  }
+  S.cameraId = null;
   S.facing = S.facing === 'user' ? 'environment' : 'user';
   try { await abrirCamera(); } catch(e){ S.facing = S.facing === 'user' ? 'environment' : 'user'; try { await abrirCamera(); } catch(_){} }
 });
