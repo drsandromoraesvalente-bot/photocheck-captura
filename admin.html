@@ -81,7 +81,7 @@ h2{font-family:var(--f-display);font-weight:400;font-size:22px;margin:0}
 </head>
 <body>
 <header class="topo">
-  <div class="marca"><span class="selo">K</span>Kaptora System · Administração</div>
+  <div class="marca"><span class="selo">K</span><span class="wordmark"><b>Kaptora</b><small>System</small></span><span class="marca-sub" style="flex-basis:auto;padding-left:6px">Administração</span></div>
   <div class="acoes" style="align-items:center"><span class="quem" id="quem"></span><a class="btn sec" href="./?marca=padrao" target="_blank" rel="noopener">Abrir o app Kaptora</a><button class="btn sec" id="sair" hidden>Sair</button></div>
 </header>
 
@@ -114,7 +114,7 @@ h2{font-family:var(--f-display);font-weight:400;font-size:22px;margin:0}
         <div class="campo"><label for="f-produto">Nome do produto</label><input type="text" id="f-produto" placeholder="Ex.: Aurora Face Scan"><span class="ajuda">Aparece no topo, na aba do navegador e no plano exportado.</span></div>
         <div class="campo"><label for="f-id">Código do cliente</label><input type="text" id="f-id" placeholder="ex.: clinica-aurora"><span class="ajuda">Só letras minúsculas, números e hífen. Vira o link: ?marca=código</span></div>
         <div class="campo"><label for="f-clinica">Clínica ou empresa</label><input type="text" id="f-clinica" placeholder="Ex.: Clínica Aurora Estética"></div>
-        <div class="campo"><label for="f-subtitulo">Subtítulo</label><input type="text" id="f-subtitulo" placeholder="Ex.: Avaliação Completa"></div>
+        <div class="campo"><label for="f-subtitulo">Subtítulo</label><input type="text" id="f-subtitulo" placeholder="Ex.: Avaliação Facial Completa"></div>
       </div>
       <div class="grade2">
         <div class="campo"><label>Logo</label>
@@ -201,7 +201,7 @@ let atual = null, idOriginal = null;
 
 function novaMarca(){
   const m = copia(PADRAO);
-  m.id = ''; m.produto = ''; m.clinica = ''; m.subtitulo = 'Avaliação Completa'; m.selo = ''; m.rodape = '';
+  m.id = ''; m.produto = ''; m.clinica = ''; m.subtitulo = 'Avaliação Facial Completa'; m.selo = ''; m.rodape = '';
   m.assistente.nome = 'Kaptora'; m.modulos.metodoDrawnFace = false;
   m.contrato = { plano:'Essencial', validade:'', responsavel:'', contato:'', ativo:true };
   return m;

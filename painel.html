@@ -78,7 +78,7 @@ button,input{font:inherit;color:inherit}
 
 <main id="entrada">
   <div class="caixa">
-    <div class="marca"><span class="selo" data-m="selo">K</span><span data-m="produto">Kaptora System</span></div>
+    <div class="marca"><span class="selo" data-m="selo">K</span><span class="wordmark" data-m="wordmark"><b>Kaptora</b><small>System</small></span></div>
     <h1>Tela ao vivo</h1>
     <p>No celular da captura, toque em “Conectar tablet” e digite aqui o código que aparecer.</p>
     <input id="codigo" maxlength="5" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="•••••" aria-label="Código da sala">
@@ -99,7 +99,7 @@ button,input{font:inherit;color:inherit}
     <div id="ampliada" hidden><img alt=""><span></span></div>
   </div>
   <aside class="lado">
-    <div class="marca"><span class="selo" data-m="selo">K</span><span id="paciente">Kaptora System</span></div>
+    <div class="marca"><span class="selo" data-m="selo">K</span><span class="wordmark" data-m="wordmark"><b>Kaptora</b><small>System</small></span><span class="marca-sub" id="paciente"></span></div>
     <div class="vista"><small id="contador">Aguardando</small><strong id="nome">—</strong></div>
     <div>
       <div class="instrucao" id="instrucao"></div>
@@ -116,7 +116,7 @@ button,input{font:inherit;color:inherit}
 <script>
 const $ = s => document.querySelector(s);
 const produto = () => (window.MARCA && window.MARCA.produto) || 'Kaptora System';
-window.marcaPronta.then(() => { if ($('#paciente').textContent === 'Kaptora System') $('#paciente').textContent = produto(); });
+
 const params = new URLSearchParams(location.search);
 const NOMES = ['Frontal repouso','Frontal sorriso','3/4 direita','3/4 esquerda','Perfil direito','Perfil esquerdo','Submentoniana','Queixo abaixado','Vista superior'];
 const CHIPS = [['angulo','Ângulo'],['distancia','Distância'],['centro','Centro'],['luz','Luz'],['foco','Foco'],['expressao','Expressão'],['olhos','Olhos']];
@@ -175,7 +175,7 @@ function receber(m){
   if (!m || !m.t) return;
   if (m.t === 'plano' && P.analise){ P.analise.aplicarPlano(m.e); return; }
   if (m.t === 'plano-pedir'){ if (P.analise && P.analise.analiseAberta() && P.conn && P.conn.open) P.conn.send({ t:'plano', e:P.analise.estadoAtual() }); return; }
-  if (m.t === 'ola'){ $('#paciente').textContent = m.paciente ? m.paciente : produto(); }
+  if (m.t === 'ola'){ $('#paciente').textContent = m.paciente || ''; }
   if (m.t === 'inicio'){ $('#ampliada').hidden = true; }
   if (m.t === 'estado') mostrarEstado(m);
   if (m.t === 'foto') guardarFoto(m);
