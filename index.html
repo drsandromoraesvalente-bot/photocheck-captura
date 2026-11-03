@@ -4,7 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#162d25">
-<title>Kaptora System</title>
+<title data-m="app">Kaptora System</title>
+<script src="./marca.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Marcellus&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
@@ -169,7 +170,7 @@ h2{font-family:var(--f-display);font-weight:400;font-size:22px;margin:0 0 4px}
 
 <!-- ================= TELA 1: PREPARO ================= -->
 <main id="tela-inicio" class="coluna">
-  <div class="marca"><span class="selo">K</span>Kaptora System · Avaliação Completa</div>
+  <div class="marca"><span class="selo" data-m="selo">K</span><span data-m="titulo-marca">Kaptora System · Avaliação Completa</span></div>
   <header>
     <h1>Captura facial guiada</h1>
     <p class="lead">Nove vistas padronizadas em menos de dois minutos. A câmera acompanha o ângulo da cabeça e fotografa sozinha quando a posição, a luz e a expressão estão corretas.</p>
@@ -183,17 +184,17 @@ h2{font-family:var(--f-display);font-weight:400;font-size:22px;margin:0 0 4px}
     </div>
     <div class="campo">
       <label for="operador">Profissional responsável</label>
-      <input type="text" id="operador" autocomplete="off" placeholder="Ex.: Dr. Sandro Valente">
+      <input type="text" id="operador" autocomplete="off" placeholder="Ex.: Dra. Ana Souza">
     </div>
     <div class="modos" role="radiogroup" aria-label="Modo de captura">
       <label class="modo"><input type="radio" name="modo" id="modo-consultorio" value="consultorio" checked><strong>No consultório</strong><span>Câmera traseira, celular no tripé, profissional conduz</span></label>
       <label class="modo"><input type="radio" name="modo" id="modo-casa" value="casa"><strong>Em casa</strong><span>Câmera frontal, a paciente se vê e a voz conduz</span></label>
     </div>
     <label class="chave"><input type="checkbox" id="voz" checked> Voz guiando a paciente</label>
-    <label class="chave" id="linha-conversa" hidden><input type="checkbox" id="conversa" checked> Kaptora em conversa livre (usa o microfone e a internet)</label>
+    <label class="chave" id="linha-conversa" hidden><input type="checkbox" id="conversa" checked> <span data-m="assistente">Kaptora</span> em conversa livre (usa o microfone e a internet)</label>
   </section>
 
-  <section class="bloco" aria-labelledby="t-tela">
+  <section class="bloco" aria-labelledby="t-tela" id="bloco-tela">
     <h2 id="t-tela">Tela ao lado (tablet ou TV)</h2>
     <p class="nota">Mostra a câmera, as instruções e cada foto em tempo real numa segunda tela. A imagem vai direto do celular para o tablet, criptografada, sem ficar guardada em servidor. Os dois aparelhos precisam de internet; no mesmo Wi-Fi fica mais rápido.</p>
     <div><button class="btn sec" id="conectar-tela">Conectar tablet</button></div>
@@ -221,7 +222,7 @@ h2{font-family:var(--f-display);font-weight:400;font-size:22px;margin:0 0 4px}
 
   <section class="consent" aria-labelledby="t-lgpd">
     <h2 id="t-lgpd">Consentimento (LGPD)</h2>
-    <p>As fotos do rosto e os pontos faciais calculados são dados biométricos, ou seja, dados pessoais sensíveis. Eles serão usados apenas para avaliação, planejamento e acompanhamento do tratamento, ficam guardados com acesso restrito à equipe responsável e podem ser excluídos a pedido da paciente a qualquer momento. Este termo é separado da autorização de uso de imagem em redes sociais.</p>
+    <p data-m="consentimento">As fotos do rosto e os pontos faciais calculados são dados biométricos, ou seja, dados pessoais sensíveis. Eles serão usados apenas para avaliação, planejamento e acompanhamento do tratamento, ficam guardados com acesso restrito à equipe responsável e podem ser excluídos a pedido da paciente a qualquer momento. Este termo é separado da autorização de uso de imagem em redes sociais.</p>
     <label><input type="checkbox" id="consentimento"> A paciente leu e autoriza a captura e o armazenamento das imagens para fins clínicos.</label>
   </section>
 
@@ -236,7 +237,7 @@ h2{font-family:var(--f-display);font-weight:400;font-size:22px;margin:0 0 4px}
     <span class="status" id="status-modelo"><span class="ponto"></span><span>Preparando o rastreamento facial…</span></span>
   </div>
 
-  <p class="rodape">Kaptora System · Drawn Face Academy · Produzido por Aurya Nexus Technologies. As fotos ficam só neste aparelho até você baixar o pacote.</p>
+  <p class="rodape"><span data-m="rodape">Kaptora System · Drawn Face Academy · Produzido por Aurya Nexus Technologies</span>. As fotos ficam só neste aparelho até você baixar o pacote.</p>
 </main>
 
 <!-- ================= TELA 2: CAPTURA ================= -->
@@ -289,7 +290,7 @@ h2{font-family:var(--f-display);font-weight:400;font-size:22px;margin:0 0 4px}
 
 <!-- ================= TELA 3: REVISÃO ================= -->
 <main id="tela-revisao" class="coluna" hidden>
-  <div class="marca"><span class="selo">K</span>Kaptora System · Avaliação Completa</div>
+  <div class="marca"><span class="selo" data-m="selo">K</span><span data-m="titulo-marca">Kaptora System · Avaliação Completa</span></div>
   <header>
     <h1 id="rev-titulo">Revisão das fotos</h1>
     <div class="resumo" id="rev-resumo"></div>
@@ -303,7 +304,7 @@ h2{font-family:var(--f-display);font-weight:400;font-size:22px;margin:0 0 4px}
     <button class="btn sec" id="nova">Nova avaliação</button>
   </div>
   <p class="nota">O pacote traz as fotos em resolução máxima (AAAA-MM-DD_paciente_vista-N.jpg), os 478 pontos faciais de cada vista e o registro da sessão com ângulos e checagens. Na versão integrada, ele sobe sozinho para o Drive da clínica e aparece na ficha do Vox Clínica.</p>
-  <p class="rodape">Kaptora System · Drawn Face Academy · Produzido por Aurya Nexus Technologies</p>
+  <p class="rodape" data-m="rodape">Kaptora System · Drawn Face Academy · Produzido por Aurya Nexus Technologies</p>
 </main>
 
 <script src="./lib/jszip.min.js"></script>
@@ -313,6 +314,9 @@ h2{font-family:var(--f-display);font-weight:400;font-size:22px;margin:0 0 4px}
    CONFIGURAÇÃO — valores iniciais, a calibrar no piloto com 20 pacientes
    ===================================================================== */
 const params = new URLSearchParams(location.search);
+// Marca do cliente (white label): nome, cores, assistente de voz e módulos liberados
+const MARCA = await window.marcaPronta;
+const NOME_IA = MARCA.assistente.nome;
 // Em visualizações embutidas (sem endereço próprio) new URL falha; nesse caso usa o caminho relativo
 function caminho(p){ try { return new URL(p, document.baseURI).href; } catch(e){ return p; } }
 const SEM_ENDERECO = !/^https?:$/.test(location.protocol) || location.origin === 'null';
@@ -323,7 +327,7 @@ const CONFIG = {
   wasm:   params.get('wasm')   || caminho('./mediapipe/wasm'),
   modelo: params.get('modelo') || caminho('./modelo/face_landmarker.task'),
   // ID do agente "Kaptora" no ElevenLabs (público). Vazio = Kaptora só com voz guiada, sem conversa.
-  agenteKaptora: params.get('agente') || '',
+  agenteKaptora: params.get('agente') || (MARCA.modulos.conversaLivre ? MARCA.assistente.agente || '' : ''),
   estabilidadeMs: 500,      // pose dentro da tolerância por 0,5 s
   dicaMs: 20000,            // instrução detalhada após 20 s
   pularMs: 40000,           // oferece pular após 40 s
@@ -592,7 +596,7 @@ if ('speechSynthesis' in window){ escolherVoz(); speechSynthesis.onvoiceschanged
 /* Voz da Kaptora: cada frase tem um MP3 em ./audio/<id>.mp3 (gravado no ElevenLabs).
    Se o arquivo não existir, cai para a voz do próprio celular. */
 const FRASES = [
-  ['abertura', 'Olá, eu sou a Kaptora. Vou te ajudar a fazer as fotos da sua avaliação facial. Leva menos de dois minutos.'],
+  ['abertura', MARCA.assistente.saudacao],
   ...VISTAS.flatMap(v => [[`vista-${v.n}-fala`, v.fala], [`vista-${v.n}-dica`, v.dica]]),
   ['ok', 'ok'],
   ['repetir', 'Quase. Vamos repetir, fique parada.'],
@@ -617,6 +621,7 @@ const FRASES = [
 ];
 const ID_DA_FRASE = new Map(); FRASES.forEach(([id, t]) => { if (!ID_DA_FRASE.has(t)) ID_DA_FRASE.set(t, id); });
 const SEM_AUDIO = new Set();
+if (NOME_IA !== 'Kaptora' || MARCA.assistente.saudacao !== window.MARCA_PADRAO.assistente.saudacao) SEM_AUDIO.add('abertura'); // o MP3 gravado diz "Kaptora"
 const player = new Audio(); player.preload = 'auto';
 // Os MP3 da Kaptora ainda podem não existir. Confere uma vez ao abrir a página: sem eles,
 // a voz do celular fala direto, já no toque do botão (exigência do iPhone para liberar a voz).
@@ -654,20 +659,20 @@ const KAPTORA = {
   },
   async iniciar(){
     if (!CONFIG.agenteKaptora || this.conv) return;
-    statusKaptora('Conectando a Kaptora…');
+    statusKaptora(`Conectando ${NOME_IA}…`);
     try{
       await this.carregarSDK();
       this.conv = await ElevenLabsClient.Conversation.startSession({
         agentId: CONFIG.agenteKaptora, connectionType:'websocket',
-        onConnect: () => { this.ativa = true; statusKaptora('Kaptora ouvindo'); },
+        onConnect: () => { this.ativa = true; statusKaptora(`${NOME_IA} ouvindo`); },
         onDisconnect: () => { this.ativa = false; this.conv = null; this.falandoAgora = false; statusKaptora(null); },
         onError: (e) => { console.error('Kaptora', e); },
-        onModeChange: ({ mode }) => { this.falandoAgora = mode === 'speaking'; statusKaptora(mode === 'speaking' ? 'Kaptora falando' : 'Kaptora ouvindo'); }
+        onModeChange: ({ mode }) => { this.falandoAgora = mode === 'speaking'; statusKaptora(mode === 'speaking' ? `${NOME_IA} falando` : `${NOME_IA} ouvindo`); }
       });
       this.ativa = true;
     } catch(e){
       console.error(e); this.conv = null; this.ativa = false;
-      statusKaptora(null); $('#correcao').textContent = 'A Kaptora não conectou. Sigo com a voz guiada.';
+      statusKaptora(null); $('#correcao').textContent = `${NOME_IA} não conectou. Sigo com a voz guiada.`;
     }
   },
   enviar(msg){ if (!this.ativa || !this.conv) return; try { this.conv.sendUserMessage(msg); } catch(e){ console.error(e); } },
@@ -1025,7 +1030,7 @@ async function iniciarCaptura(fila, refazendo=false){
   // A Kaptora conecta já no toque (exigência do iPhone para áudio e microfone); a 1ª fala dela é a saudação
   const kaptoraPedida = S.voz && S.conversa && CONFIG.agenteKaptora;
   if (kaptoraPedida){ KAPTORA.posicaoAvisada = -1; KAPTORA.iniciar(); }
-  else if (!refazendo && S.fotos.every(f => !f)) falar('Olá, eu sou a Kaptora. Vou te ajudar a fazer as fotos da sua avaliação facial. Leva menos de dois minutos.', true);
+  else if (!refazendo && S.fotos.every(f => !f)) falar(MARCA.assistente.saudacao, true);
   mostrar('captura'); montarChips(); S.atual = primeira; montarMiniaturas();
   TELA.enviar({ t:'inicio' });
   $('#btn-voz').setAttribute('aria-pressed', String(S.voz));
@@ -1046,7 +1051,7 @@ async function iniciarCaptura(fila, refazendo=false){
   aviso(null);
   await manterTelaAcesa();
   if (kaptoraPedida && !refazendo && S.fotos.every(f => !f)){
-    aviso('A Kaptora está te cumprimentando…', 'Converse à vontade. A captura começa em seguida.');
+    aviso(`${NOME_IA} está te cumprimentando…`, 'Converse à vontade. A captura começa em seguida.');
     await esperarSaudacao();
     aviso(null);
   }
@@ -1107,7 +1112,7 @@ async function baixarPacote(){
       dados.file(nome + '_pontos.json', JSON.stringify({ vista:VISTAS[i].n, nome:VISTAS[i].nome, formato:'[x, y, z] normalizados (MediaPipe Face Landmarker, 478 pontos)', pontos:f.dados.pontos }));
     });
     const sessao = {
-      app:'Kaptora System · Avaliação Completa', versaoApp:CONFIG.versao, paciente:S.paciente, profissional:S.operador || null,
+      app:`${MARCA.produto} · ${MARCA.subtitulo}`, marca:MARCA.id, versaoApp:CONFIG.versao, paciente:S.paciente, profissional:S.operador || null,
       data, inicio:S.inicio && S.inicio.toISOString(), fim:S.fim && S.fim.toISOString(),
       modo:S.modo, camera:S.facing === 'user' ? 'frontal' : 'traseira', aparelho:navigator.userAgent,
       consentimentoLGPD:{ aceito:true, registradoEm:S.consentimentoEm },
@@ -1166,6 +1171,7 @@ async function fotoComFundoEscuro(blob){
   return new Promise(res => out.toBlob(res, 'image/jpeg', 0.95));
 }
 function gerarFundoEscuro(idx){
+  if (!MARCA.modulos.fundoEscuro) return;
   const f = S.fotos[idx]; if (!f) return;
   filaFundo = filaFundo.then(async () => {
     if (S.fotos[idx] !== f) return;                    // a foto foi refeita no meio do caminho
@@ -1225,7 +1231,8 @@ const TELA = {
   mostrarCodigo(){
     const base = location.href.split('?')[0].split('#')[0].replace(/[^/]*$/, '');
     const sinal = params.get('sinal');
-    const link = `${base}painel.html?sala=${this.codigo}${sinal ? '&sinal=' + encodeURIComponent(sinal) : ''}`;
+    const marcaLink = MARCA.id && MARCA.id !== 'kaptora' && params.get('marca') !== '__previa' ? '&marca=' + MARCA.id : '';
+    const link = `${base}painel.html?sala=${this.codigo}${marcaLink}${sinal ? '&sinal=' + encodeURIComponent(sinal) : ''}`;
     $('#codigo-sala').textContent = this.codigo; $('#link-painel').textContent = link;
     try { const q = qrcode(0, 'M'); q.addData(link); q.make(); $('#qr').innerHTML = q.createSvgTag({ cellSize:4, margin:0, scalable:true }); } catch(e){ $('#qr').hidden = true; }
   },
@@ -1338,7 +1345,7 @@ async function abrirDFAnalise(origem){
     frente: origem === 'revisao' && S.fotos[0] ? S.fotos[0].blob : null,
     perfil: origem === 'revisao' && perfil ? perfil.blob : null,
     paciente: origem === 'revisao' ? S.paciente : ($('#paciente').value.trim() || ''),
-    config: CONFIG, mostrar, aoVoltar: () => mostrar(origem)
+    config: CONFIG, marca: MARCA, mostrar, aoVoltar: () => mostrar(origem)
   });
   TELA.enviar({ t:'plano-pedir' });   // se o tablet já estiver planejando, puxa o plano dele
 }
@@ -1353,6 +1360,10 @@ $('#nova').addEventListener('click', () => { $('#paciente').value = ''; $('#cons
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && S.rodando) manterTelaAcesa(); });
 
 $('#linha-conversa').hidden = !CONFIG.agenteKaptora;
+// Módulos liberados para esta marca
+$('#bloco-tela').hidden = !MARCA.modulos.telaAoVivo;
+if (!MARCA.modulos.analise){ $('#analisar').hidden = true; $('#analisar-fotos').hidden = true; }
+if (!MARCA.modulos.fundoEscuro) $('#ver-fundo').hidden = true;
 // Começa a baixar o modelo enquanto o formulário é preenchido
 carregarModelo().catch(() => {});
 

@@ -112,6 +112,10 @@ const A = {
   sel:null, ajustando:false, antes:false, arrastando:null, renderPendente:false
 };
 
+// Marca (white label) e módulo do método Drawn Face (mapa de zonas + planejamento DF)
+const marca = () => A.marca || window.MARCA || { produto:'Kaptora System', modulos:{ metodoDrawnFace:true } };
+const metodoDF = () => !marca().modulos || marca().modulos.metodoDrawnFace !== false;
+
 /* ---------- Detector ---------- */
 async function detector(){
   if (A.lm) return A.lm;
@@ -734,7 +738,7 @@ function montarTela(){
   const s = document.createElement('main'); s.id = 'tela-analise'; s.hidden = true;
   s.innerHTML = `
     <div class="dfa-topo"><button class="dfa-voltar" id="dfa-voltar">← Voltar</button></div>
-    <header><h1>Kaptora · Análise</h1><p class="dfa-sub" id="dfa-sub"></p></header>
+    <header><h1 id="dfa-titulo">Kaptora · Análise</h1><p class="dfa-sub" id="dfa-sub"></p></header>
     <div class="dfa-abas" role="tablist">
       <button class="dfa-aba" role="tab" id="dfa-aba-frente" data-v="frente" aria-selected="true">Frente</button>
       <button class="dfa-aba" role="tab" id="dfa-aba-perfil" data-v="perfil" aria-selected="false">Perfil</button>
@@ -760,7 +764,7 @@ function montarTela(){
     <div class="dfa-lista" id="dfa-lista"></div>
     <section class="dfa-sim" id="dfa-sim"></section>
     <p class="dfa-nota-legal">Análise de apoio à consulta. As medidas são estimadas a partir de foto 2D, com a íris como régua (11,7 mm), e devem ser conferidas pelo profissional. A simulação é ilustrativa e educativa: não é promessa de resultado.</p>
-    <p class="dfa-nota-legal">Kaptora System · Produzido por Aurya Nexus Technologies</p>`;
+    <p class="dfa-nota-legal" id="dfa-rodape">Kaptora System · Produzido por Aurya Nexus Technologies</p>`;
   document.body.append(s);
   $('#dfa-voltar').onclick = () => { s.hidden = true; A.aoVoltar && A.aoVoltar(); };
   s.querySelectorAll('.dfa-aba').forEach(b => b.onclick = () => trocarVista(b.dataset.v));
@@ -871,7 +875,7 @@ function atualizarLista(){
     else val.textContent = m.texto;
     if (aberto){
       const det = document.createElement('div'); det.className = 'dfa-det';
-      det.innerHTML = `${m.estimado && t.manual ? `<p class="dfa-aviso"></p>` : ''}<p></p><p></p><p><strong>Caminho Drawn Face: </strong><span></span></p><p class="ref"></p>`;
+      det.innerHTML = `${m.estimado && t.manual ? `<p class="dfa-aviso"></p>` : ''}<p></p><p></p><p><strong>${metodoDF() ? 'Caminho Drawn Face' : 'Caminho sugerido'}: </strong><span></span></p><p class="ref"></p>`;
       const ps = det.querySelectorAll('p'); let i = 0;
       if (m.estimado && t.manual) ps[i++].textContent = t.manual;
       ps[i++].textContent = t.sobre; ps[i++].textContent = t.leitura; ps[i++].querySelector('span').textContent = t.caminho; ps[i].textContent = 'Referência: ' + t.ref;
@@ -891,7 +895,7 @@ function acoesDoPlano(){
 
 function montarSimulacao(){
   const box = $('#dfa-sim'), d = A.dados[A.vista];
-  box.hidden = !d || !d.pts;
+  box.hidden = !d || !d.pts || !metodoDF();
   if (box.hidden) return;
   const s = A.sim;
   box.innerHTML = `<h2>Planejamento</h2>
@@ -949,7 +953,7 @@ async function baixarPlano(){
   const rot = (t, x) => { c.lineWidth = fs * 0.25; c.strokeStyle = 'rgba(10,19,16,.7)'; c.strokeText(t, x, pad + fs); c.fillText(t, x, pad + fs); };
   rot('ANTES', pad); rot('PLANEJADO', W + gap + pad);
   let y = H + pad + fs;
-  c.fillStyle = '#ceb78e'; c.fillText(`Kaptora System · Plano Drawn Face${A.paciente ? ' · ' + A.paciente : ''}${A.tecnica ? ' · ' + A.tecnica : ''}`, pad, y); y += fs * 1.8;
+  c.fillStyle = '#ceb78e'; c.fillText(`${marca().produto}${metodoDF() ? ' · Plano Drawn Face' : ' · Plano'}${A.paciente ? ' · ' + A.paciente : ''}${A.tecnica ? ' · ' + A.tecnica : ''}`, pad, y); y += fs * 1.8;
   c.font = `500 ${fs}px Manrope, system-ui, sans-serif`; c.fillStyle = '#f9f5ed';
   (linhas.length ? linhas : ['Nenhuma ação planejada nesta vista.']).forEach(t => { c.fillText(t, pad, y); y += fs * 1.6; });
   c.font = `italic 500 ${Math.round(fs * 0.75)}px Manrope, system-ui, sans-serif`; c.fillStyle = 'rgba(249,245,237,.7)';
@@ -964,9 +968,14 @@ async function baixarPlano(){
 function renderTudo(){ renderVazio(); sincronizarBotoes(); atualizarLista(); montarSimulacao(); pedirDesenho(); }
 
 /* ---------- Entrada pública ---------- */
-export async function abrirAnalise({ frente, perfil, paciente, config, mostrar, aoVoltar }){
+export async function abrirAnalise({ frente, perfil, paciente, config, marca:M, mostrar, aoVoltar }){
   A.config = config; A.mostrar = mostrar; A.aoVoltar = aoVoltar; A.paciente = paciente || '';
+  A.marca = M || window.MARCA || null;
   montarTela();
+  // Marca do cliente (white label)
+  $('#dfa-titulo').textContent = `${marca().produto} · Análise`;
+  $('#dfa-rodape').textContent = window.MARCA_rodape ? window.MARCA_rodape(marca()) : marca().produto;
+  $('#dfa-mapa').hidden = !metodoDF();
   mostrar && mostrar('analise');
   $('#tela-analise').hidden = false; window.scrollTo(0, 0);
   A.dados = { frente:null, perfil:null }; A.sim = SIM_VAZIO(); A.tecnica = ''; A.sel = null; A.ajustando = false;

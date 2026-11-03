@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Kaptora · Administração</title>
+<script src="./marca.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Marcellus&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --verde:#162d25; --ouro:#ceb78e;
+  --bg:#f9f5ed; --fg:#162d25; --fg2:#4d5a53; --linha:#e3dac8; --cartao:#fffdf8; --acento:#9c8152;
+  --botao-bg:#162d25; --botao-fg:#f9f5ed; --ok:#3c8558; --alerta:#a8721d; --erro:#b04a3a;
+  --f-display:'Marcellus','Iowan Old Style','Times New Roman',serif;
+  --f-corpo:'Manrope',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --f-num:'JetBrains Mono',ui-monospace,Menlo,monospace; --raio:10px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){ --bg:#0e1a16; --fg:#f2ece0; --fg2:#b4aea0; --linha:#273832; --cartao:#14261f; --acento:#ceb78e; --botao-bg:#ceb78e; --botao-fg:#162d25; --ok:#7cc097; --alerta:#e2b36b; --erro:#e3897a; color-scheme:dark; }
+}
+:root[data-theme="dark"]{ --bg:#0e1a16; --fg:#f2ece0; --fg2:#b4aea0; --linha:#273832; --cartao:#14261f; --acento:#ceb78e; --botao-bg:#ceb78e; --botao-fg:#162d25; --ok:#7cc097; --alerta:#e2b36b; --erro:#e3897a; color-scheme:dark; }
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.55 var(--f-corpo);-webkit-font-smoothing:antialiased}
+button,input,textarea,select{font:inherit;color:inherit}
+[hidden]{display:none!important}
+:focus-visible{outline:2px solid var(--acento);outline-offset:2px}
+.topo{border-bottom:1px solid var(--linha);padding:16px max(16px,env(safe-area-inset-left));display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:space-between}
+.marca{display:flex;align-items:center;gap:10px;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--fg2)}
+.selo{width:28px;height:28px;border-radius:50%;border:1.5px solid var(--acento);display:grid;place-items:center;font-family:var(--f-display);font-size:13px;letter-spacing:0;color:var(--acento)}
+.layout{display:grid;grid-template-columns:260px minmax(0,1fr) 400px;gap:24px;padding:24px max(16px,env(safe-area-inset-left));max-width:1500px;margin:0 auto;align-items:start}
+@media (max-width:1180px){ .layout{grid-template-columns:240px minmax(0,1fr)} .previa{grid-column:1 / -1} }
+@media (max-width:760px){ .layout{grid-template-columns:1fr} }
+h1{font-family:var(--f-display);font-weight:400;font-size:clamp(28px,4vw,38px);margin:0;line-height:1.1}
+h2{font-family:var(--f-display);font-weight:400;font-size:22px;margin:0}
+.sub{color:var(--fg2);margin:4px 0 0;font-size:14px}
+.cartao{border:1px solid var(--linha);background:var(--cartao);border-radius:var(--raio);padding:18px;display:grid;gap:14px}
+.clientes{display:grid;gap:8px}
+.cli{display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:center;text-align:left;border:1px solid var(--linha);background:var(--bg);border-radius:8px;padding:10px;cursor:pointer}
+.cli[aria-current="true"]{border-color:var(--acento);box-shadow:inset 0 0 0 1px var(--acento)}
+.cli .bolinha{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-family:var(--f-display);color:#fff;overflow:hidden}
+.cli .bolinha img{width:100%;height:100%;object-fit:cover}
+.cli strong{display:block;font-size:14px;line-height:1.2}
+.cli small{color:var(--fg2);font-family:var(--f-num);font-size:11px}
+.form{display:grid;gap:18px}
+.grade2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media (max-width:560px){ .grade2{grid-template-columns:1fr} }
+.campo{display:grid;gap:6px}
+.campo label{font-weight:600;font-size:14px}
+.campo .ajuda{font-size:12px;color:var(--fg2)}
+.campo input[type=text],.campo input[type=date],.campo textarea,.campo select{border:1px solid var(--linha);background:var(--bg);border-radius:8px;padding:10px 12px;min-height:44px;width:100%}
+.campo textarea{min-height:110px;resize:vertical}
+.cores{display:flex;gap:10px;align-items:center}
+.cores input[type=color]{width:48px;height:40px;border:1px solid var(--linha);border-radius:8px;padding:2px;background:var(--bg)}
+.cores code{font-family:var(--f-num);font-size:13px}
+.logo{display:flex;gap:12px;align-items:center}
+.logo .bola{width:56px;height:56px;border-radius:50%;border:1px solid var(--linha);display:grid;place-items:center;overflow:hidden;font-family:var(--f-display);font-size:22px}
+.logo .bola img{width:100%;height:100%;object-fit:contain}
+.chave{display:flex;gap:10px;align-items:flex-start;font-weight:600;font-size:14px}
+.chave input{width:20px;height:20px;accent-color:var(--acento);margin-top:1px;flex:none}
+.chave span small{display:block;font-weight:400;color:var(--fg2);font-size:12px}
+.acoes{display:flex;flex-wrap:wrap;gap:10px}
+.btn{border:0;border-radius:999px;background:var(--botao-bg);color:var(--botao-fg);font-weight:700;padding:11px 18px;min-height:44px;cursor:pointer}
+.btn.sec{background:transparent;color:var(--fg);border:1px solid var(--linha)}
+.btn.perigo{background:transparent;color:var(--erro);border:1px solid color-mix(in srgb,var(--erro) 40%,transparent)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.aviso{font-size:13px;color:var(--fg2);border-left:3px solid var(--acento);padding:4px 0 4px 12px;margin:0}
+.link{font-family:var(--f-num);font-size:12px;word-break:break-all;background:var(--bg);border:1px solid var(--linha);border-radius:8px;padding:10px}
+.status{font-size:13px;font-weight:600;color:var(--ok);min-height:1.2em}
+.previa{position:sticky;top:16px;display:grid;gap:10px}
+.celular{width:100%;max-width:390px;aspect-ratio:390/780;border:10px solid #0a1310;border-radius:36px;overflow:hidden;background:#000;justify-self:center;box-shadow:0 20px 50px rgba(10,19,16,.25)}
+.celular iframe{width:100%;height:100%;border:0;background:#fff}
+</style>
+</head>
+<body>
+<header class="topo">
+  <div class="marca"><span class="selo">K</span>Kaptora System · Administração</div>
+  <div class="acoes"><a class="btn sec" href="./?marca=padrao" target="_blank" rel="noopener">Abrir o app Kaptora</a></div>
+</header>
+
+<div class="layout">
+  <aside class="cartao">
+    <div><h2>Clientes</h2><p class="sub">Marcas white label salvas neste navegador.</p></div>
+    <div class="clientes" id="clientes"></div>
+    <button class="btn" id="nova">Nova marca</button>
+    <label class="btn sec" style="text-align:center">Importar arquivo .json<input type="file" id="importar" accept="application/json,.json" hidden></label>
+  </aside>
+
+  <main class="form">
+    <header>
+      <h1 id="titulo">Nova marca</h1>
+      <p class="sub">Tudo o que o cliente vê: nome, logo, cores, a assistente de voz, o termo LGPD e os módulos liberados no plano dele.</p>
+    </header>
+
+    <section class="cartao">
+      <h2>Identidade</h2>
+      <div class="grade2">
+        <div class="campo"><label for="f-produto">Nome do produto</label><input type="text" id="f-produto" placeholder="Ex.: Aurora Face Scan"><span class="ajuda">Aparece no topo, na aba do navegador e no plano exportado.</span></div>
+        <div class="campo"><label for="f-id">Código do cliente</label><input type="text" id="f-id" placeholder="ex.: clinica-aurora"><span class="ajuda">Só letras minúsculas, números e hífen. Vira o link: ?marca=código</span></div>
+        <div class="campo"><label for="f-clinica">Clínica ou empresa</label><input type="text" id="f-clinica" placeholder="Ex.: Clínica Aurora Estética"></div>
+        <div class="campo"><label for="f-subtitulo">Subtítulo</label><input type="text" id="f-subtitulo" placeholder="Ex.: Avaliação Completa"></div>
+      </div>
+      <div class="grade2">
+        <div class="campo"><label>Logo</label>
+          <div class="logo"><div class="bola" id="logo-bola">K</div>
+            <div class="acoes"><label class="btn sec">Enviar logo<input type="file" id="f-logo" accept="image/*" hidden></label><button class="btn sec" id="tirar-logo" type="button">Tirar</button></div>
+          </div><span class="ajuda">Quadrada, de preferência PNG com fundo transparente. Sem logo, usa a letra do selo.</span></div>
+        <div class="campo"><label for="f-selo">Letra do selo</label><input type="text" id="f-selo" maxlength="2" placeholder="K"></div>
+      </div>
+      <div class="grade2">
+        <div class="campo"><label for="f-primaria">Cor principal</label><div class="cores"><input type="color" id="f-primaria"><code id="c-primaria"></code></div><span class="ajuda">Botões e textos fortes no modo claro.</span></div>
+        <div class="campo"><label for="f-acento">Cor de destaque</label><div class="cores"><input type="color" id="f-acento"><code id="c-acento"></code></div><span class="ajuda">Detalhes, selos e botões no modo escuro.</span></div>
+      </div>
+    </section>
+
+    <section class="cartao">
+      <h2>Assistente de voz</h2>
+      <div class="grade2">
+        <div class="campo"><label for="f-assistente">Nome da assistente</label><input type="text" id="f-assistente" placeholder="Ex.: Kaptora"></div>
+        <div class="campo"><label for="f-agente">Agente de conversa livre (ElevenLabs)</label><input type="text" id="f-agente" placeholder="agent_…"><span class="ajuda">Opcional. Vazio = voz guiada, sem conversa.</span></div>
+      </div>
+      <div class="campo"><label for="f-saudacao">Frase de abertura</label><textarea id="f-saudacao" style="min-height:70px"></textarea><span class="ajuda">É a primeira frase que a assistente fala para a paciente.</span></div>
+    </section>
+
+    <section class="cartao">
+      <h2>Módulos liberados</h2>
+      <p class="sub" style="margin:0">Ligue o que entra no plano contratado pelo cliente.</p>
+      <label class="chave"><input type="checkbox" id="m-telaAoVivo"><span>Tela ao lado (tablet ou TV)<small>Câmera e fotos ao vivo, análise sincronizada</small></span></label>
+      <label class="chave"><input type="checkbox" id="m-analise"><span>Análise facial<small>Medidas, harmonia e simulação</small></span></label>
+      <label class="chave"><input type="checkbox" id="m-metodoDrawnFace"><span>Método Drawn Face<small>Mapa Drawn Face Points, LipoGraft Codes e planejamento por zonas. Licença do método.</small></span></label>
+      <label class="chave"><input type="checkbox" id="m-fundoEscuro"><span>Fundo escuro automático</span></label>
+      <label class="chave"><input type="checkbox" id="m-conversaLivre"><span>Conversa livre com a assistente<small>Precisa do agente do ElevenLabs acima</small></span></label>
+    </section>
+
+    <section class="cartao">
+      <h2>Textos legais</h2>
+      <div class="campo"><label for="f-consentimento">Termo de consentimento (LGPD)</label><textarea id="f-consentimento"></textarea><span class="ajuda">Revise com o jurídico do cliente. A paciente precisa aceitar antes da captura.</span></div>
+      <div class="campo"><label for="f-rodape">Texto extra no rodapé</label><input type="text" id="f-rodape" placeholder="Ex.: CRO-RJ 00000 · Responsável técnico"></div>
+      <label class="chave"><input type="checkbox" id="f-credito"><span>Mostrar “Tecnologia Kaptora System · Aurya Nexus Technologies”</span></label>
+    </section>
+
+    <section class="cartao">
+      <h2>Contrato</h2>
+      <p class="aviso">Registro comercial do cliente. Ainda não bloqueia o acesso: o controle de licença e cobrança entra com o servidor de contas.</p>
+      <div class="grade2">
+        <div class="campo"><label for="f-plano">Plano</label><select id="f-plano"><option>Essencial</option><option>Profissional</option><option>Premium</option></select></div>
+        <div class="campo"><label for="f-validade">Válido até</label><input type="date" id="f-validade"></div>
+        <div class="campo"><label for="f-responsavel">Responsável no cliente</label><input type="text" id="f-responsavel" placeholder="Nome"></div>
+        <div class="campo"><label for="f-contato">Contato</label><input type="text" id="f-contato" placeholder="E-mail ou WhatsApp"></div>
+      </div>
+    </section>
+
+    <section class="cartao">
+      <h2>Publicar</h2>
+      <div class="acoes">
+        <button class="btn" id="salvar">Salvar</button>
+        <button class="btn sec" id="baixar">Baixar arquivo da marca</button>
+        <button class="btn perigo" id="excluir">Excluir</button>
+      </div>
+      <p class="status" id="status" aria-live="polite"></p>
+      <div class="campo"><label>Link do cliente</label><div class="link" id="link-cliente">—</div>
+        <span class="ajuda">O link passa a funcionar quando o arquivo da marca estiver publicado em <b>marcas/</b> no servidor. O aparelho do cliente guarda a marca depois do primeiro acesso.</span></div>
+    </section>
+  </main>
+
+  <aside class="previa">
+    <h2>Pré-visualização</h2>
+    <p class="sub" style="margin:0">Atualiza enquanto você edita.</p>
+    <div class="celular"><iframe id="previa" title="Pré-visualização do app com a marca"></iframe></div>
+  </aside>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const LISTA = 'kaptora-admin-marcas', PREVIA = 'kaptora-marca-previa';
+const PADRAO = window.MARCA_PADRAO;
+const ler = (k, d) => { try { return JSON.parse(localStorage.getItem(k) || 'null') ?? d; } catch(e){ return d; } };
+const gravar = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch(e){ return false; } };
+const slug = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40);
+const copia = o => JSON.parse(JSON.stringify(o));
+
+let marcas = ler(LISTA, {});          // { id: marca }
+let atual = null, idOriginal = null;
+
+function novaMarca(){
+  const m = copia(PADRAO);
+  m.id = ''; m.produto = ''; m.clinica = ''; m.subtitulo = 'Avaliação Completa'; m.selo = ''; m.rodape = '';
+  m.assistente.nome = 'Kaptora'; m.modulos.metodoDrawnFace = false;
+  m.contrato = { plano:'Essencial', validade:'', responsavel:'', contato:'' };
+  return m;
+}
+function completa(m){ const b = copia(PADRAO); const x = Object.assign(b, copia(m)); x.cores = Object.assign({}, PADRAO.cores, m.cores); x.assistente = Object.assign({}, PADRAO.assistente, m.assistente); x.modulos = Object.assign({}, PADRAO.modulos, m.modulos); x.contrato = Object.assign({ plano:'Essencial', validade:'', responsavel:'', contato:'' }, m.contrato); return x; }
+
+function preencher(m){
+  atual = completa(m); idOriginal = m.id || null;
+  $('#titulo').textContent = m.produto || 'Nova marca';
+  $('#f-produto').value = atual.produto; $('#f-id').value = atual.id; $('#f-clinica').value = atual.clinica; $('#f-subtitulo').value = atual.subtitulo;
+  $('#f-selo').value = atual.selo; $('#f-primaria').value = atual.cores.primaria; $('#f-acento').value = atual.cores.acento;
+  $('#f-assistente').value = atual.assistente.nome; $('#f-agente').value = atual.assistente.agente; $('#f-saudacao').value = atual.assistente.saudacao;
+  Object.keys(PADRAO.modulos).forEach(k => $('#m-' + k).checked = !!atual.modulos[k]);
+  $('#f-consentimento').value = atual.consentimento; $('#f-rodape').value = atual.rodape; $('#f-credito').checked = atual.creditoTecnologia !== false;
+  $('#f-plano').value = atual.contrato.plano; $('#f-validade').value = atual.contrato.validade; $('#f-responsavel').value = atual.contrato.responsavel; $('#f-contato').value = atual.contrato.contato;
+  $('#excluir').hidden = !idOriginal;
+  ler_form(); listar(); status('');
+}
+let idEditado = false;
+function ler_form(){
+  const nomeAnt = atual.assistente.nome;
+  atual.produto = $('#f-produto').value.trim();
+  if (!idEditado && !idOriginal) $('#f-id').value = slug(atual.produto);
+  atual.id = slug($('#f-id').value);
+  atual.clinica = $('#f-clinica').value.trim(); atual.subtitulo = $('#f-subtitulo').value.trim();
+  atual.selo = $('#f-selo').value.trim().toUpperCase();
+  atual.cores = { primaria:$('#f-primaria').value, acento:$('#f-acento').value };
+  atual.assistente.nome = $('#f-assistente').value.trim() || 'Kaptora';
+  // Se a saudação ainda é a padrão com o nome antigo, acompanha o novo nome
+  const s = $('#f-saudacao').value;
+  if (nomeAnt && nomeAnt !== atual.assistente.nome && s.includes(`eu sou a ${nomeAnt}`)) $('#f-saudacao').value = s.replace(`eu sou a ${nomeAnt}`, `eu sou a ${atual.assistente.nome}`);
+  atual.assistente.saudacao = $('#f-saudacao').value.trim() || PADRAO.assistente.saudacao.replace('Kaptora', atual.assistente.nome);
+  atual.assistente.agente = $('#f-agente').value.trim();
+  Object.keys(PADRAO.modulos).forEach(k => atual.modulos[k] = $('#m-' + k).checked);
+  atual.consentimento = $('#f-consentimento').value.trim() || PADRAO.consentimento;
+  atual.rodape = $('#f-rodape').value.trim(); atual.creditoTecnologia = $('#f-credito').checked;
+  atual.contrato = { plano:$('#f-plano').value, validade:$('#f-validade').value, responsavel:$('#f-responsavel').value.trim(), contato:$('#f-contato').value.trim() };
+  $('#c-primaria').textContent = atual.cores.primaria; $('#c-acento').textContent = atual.cores.acento;
+  const bola = $('#logo-bola'); bola.innerHTML = '';
+  if (atual.logo){ const im = document.createElement('img'); im.src = atual.logo; im.alt = 'Logo'; bola.append(im); } else { bola.textContent = atual.selo || (atual.produto || 'K')[0] || 'K'; bola.style.color = atual.cores.acento; }
+  const base = location.href.split('?')[0].split('#')[0].replace(/[^/]*$/, '');
+  $('#link-cliente').textContent = atual.id ? `${base}?marca=${atual.id}` : '— preencha o código do cliente —';
+  atualizarPrevia();
+}
+let tPrevia = null;
+function atualizarPrevia(){
+  clearTimeout(tPrevia);
+  tPrevia = setTimeout(() => {
+    gravar(PREVIA, Object.assign(copia(atual), { produto: atual.produto || 'Nome do produto' }));
+    const f = $('#previa'), url = './?marca=__previa';
+    if (f.src.endsWith(url.slice(1))) f.contentWindow.location.reload(); else f.src = url;
+  }, 700);
+}
+
+function listar(){
+  const box = $('#clientes'); box.innerHTML = '';
+  const ids = Object.keys(marcas).sort((a, b) => (marcas[a].produto || a).localeCompare(marcas[b].produto || b));
+  if (!ids.length){ const p = document.createElement('p'); p.className = 'sub'; p.style.margin = '0'; p.textContent = 'Nenhuma marca ainda. Crie a primeira.'; box.append(p); }
+  ids.forEach(id => {
+    const m = marcas[id], b = document.createElement('button'); b.className = 'cli'; b.setAttribute('aria-current', String(id === idOriginal));
+    const bol = document.createElement('span'); bol.className = 'bolinha'; bol.style.background = (m.cores && m.cores.primaria) || '#162d25';
+    if (m.logo){ const im = document.createElement('img'); im.src = m.logo; im.alt = ''; bol.append(im); } else bol.textContent = m.selo || (m.produto || id)[0];
+    const t = document.createElement('span'); const st = document.createElement('strong'); st.textContent = m.produto || id; const sm = document.createElement('small'); sm.textContent = `${id} · ${(m.contrato && m.contrato.plano) || '—'}`;
+    t.append(st, sm); b.append(bol, t); b.onclick = () => { idEditado = true; preencher(m); };
+    box.append(b);
+  });
+}
+function status(t, erro){ const s = $('#status'); s.textContent = t; s.style.color = erro ? 'var(--erro)' : 'var(--ok)'; }
+
+/* ---------- Eventos ---------- */
+document.querySelectorAll('.form input, .form textarea, .form select').forEach(el => el.addEventListener(el.type === 'checkbox' || el.tagName === 'SELECT' || el.type === 'color' ? 'input' : 'input', ler_form));
+document.querySelectorAll('.form input[type=checkbox], .form select').forEach(el => el.addEventListener('change', ler_form));
+$('#f-id').addEventListener('input', () => { idEditado = true; });
+$('#nova').onclick = () => { idEditado = false; preencher(novaMarca()); $('#f-produto').focus(); };
+$('#f-logo').onchange = async e => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  try {
+    const bmp = await createImageBitmap(f), k = Math.min(1, 256 / Math.max(bmp.width, bmp.height));
+    const cv = document.createElement('canvas'); cv.width = Math.round(bmp.width * k); cv.height = Math.round(bmp.height * k);
+    cv.getContext('2d').drawImage(bmp, 0, 0, cv.width, cv.height);
+    atual.logo = cv.toDataURL('image/png'); ler_form();
+  } catch(err){ status('Não consegui ler essa imagem.', true); }
+};
+$('#tirar-logo').onclick = () => { atual.logo = ''; ler_form(); };
+$('#salvar').onclick = () => {
+  ler_form();
+  if (!atual.produto) return status('Preencha o nome do produto.', true);
+  if (!atual.id) return status('Preencha o código do cliente.', true);
+  if (atual.id !== idOriginal && marcas[atual.id]) return status('Já existe uma marca com esse código.', true);
+  if (idOriginal && idOriginal !== atual.id) delete marcas[idOriginal];
+  marcas[atual.id] = copia(atual); idOriginal = atual.id;
+  if (!gravar(LISTA, marcas)) return status('Não consegui salvar neste navegador (memória cheia ou bloqueada).', true);
+  $('#titulo').textContent = atual.produto; $('#excluir').hidden = false; listar(); status('Marca salva.');
+};
+$('#baixar').onclick = () => {
+  ler_form();
+  if (!atual.id) return status('Preencha o código do cliente.', true);
+  const blob = new Blob([JSON.stringify(atual, null, 2)], { type:'application/json' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `${atual.id}.json`;
+  document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 3000);
+  status(`Arquivo ${atual.id}.json baixado. Publique em marcas/ para o link funcionar.`);
+};
+$('#excluir').onclick = () => {
+  if (!idOriginal) return;
+  const b = $('#excluir');
+  if (b.dataset.confirmar !== '1'){ b.dataset.confirmar = '1'; b.textContent = 'Toque de novo para excluir'; setTimeout(() => { b.dataset.confirmar = ''; b.textContent = 'Excluir'; }, 4000); return; }
+  delete marcas[idOriginal]; gravar(LISTA, marcas); b.dataset.confirmar = ''; b.textContent = 'Excluir';
+  idEditado = false; preencher(novaMarca()); status('Marca excluída.');
+};
+$('#importar').onchange = async e => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  try { const m = JSON.parse(await f.text()); m.id = slug(m.id || m.produto); idEditado = true; preencher(m); idOriginal = null; $('#excluir').hidden = true; status('Arquivo importado. Toque em Salvar para guardar.'); }
+  catch(err){ status('Esse arquivo não é uma marca válida.', true); }
+};
+
+const primeira = Object.keys(marcas)[0];
+if (primeira){ idEditado = true; preencher(marcas[primeira]); } else preencher(novaMarca());
+</script>
+</body>
+</html>

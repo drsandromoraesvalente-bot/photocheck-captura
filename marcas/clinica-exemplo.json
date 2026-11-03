@@ -1,0 +1,18 @@
+{
+  "id": "clinica-exemplo",
+  "produto": "Aurora Face Scan",
+  "subtitulo": "Avaliação Facial",
+  "clinica": "Clínica Aurora Estética (exemplo)",
+  "selo": "A",
+  "logo": "",
+  "cores": { "primaria": "#1f2a44", "acento": "#d4a5a5" },
+  "assistente": {
+    "nome": "Lia",
+    "saudacao": "Olá, eu sou a Lia. Vou te ajudar a fazer as fotos da sua avaliação facial. Leva menos de dois minutos.",
+    "agente": ""
+  },
+  "modulos": { "telaAoVivo": true, "analise": true, "metodoDrawnFace": false, "fundoEscuro": true, "conversaLivre": false },
+  "rodape": "Marca de demonstração",
+  "creditoTecnologia": true,
+  "contrato": { "plano": "Profissional", "validade": "", "responsavel": "", "contato": "" }
+}

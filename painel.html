@@ -4,7 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0a1310">
-<title>Kaptora · Tela ao vivo</title>
+<title data-m="painel">Kaptora · Tela ao vivo</title>
+<script src="./marca.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Marcellus&family=Manrope:wght@400;500;600;700&display=swap">
@@ -77,13 +78,13 @@ button,input{font:inherit;color:inherit}
 
 <main id="entrada">
   <div class="caixa">
-    <div class="marca"><span class="selo">K</span>Kaptora System</div>
+    <div class="marca"><span class="selo" data-m="selo">K</span><span data-m="produto">Kaptora System</span></div>
     <h1>Tela ao vivo</h1>
     <p>No celular da captura, toque em “Conectar tablet” e digite aqui o código que aparecer.</p>
     <input id="codigo" maxlength="5" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="•••••" aria-label="Código da sala">
     <button class="btn" id="entrar" disabled>Conectar</button>
     <p class="status" id="status" aria-live="polite"></p>
-    <p class="rodape">As imagens vão direto do celular para esta tela, criptografadas, sem passar por servidor. Produzido por Aurya Nexus Technologies.</p>
+    <p class="rodape">As imagens vão direto do celular para esta tela, criptografadas, sem passar por servidor.</p>
   </div>
 </main>
 
@@ -98,7 +99,7 @@ button,input{font:inherit;color:inherit}
     <div id="ampliada" hidden><img alt=""><span></span></div>
   </div>
   <aside class="lado">
-    <div class="marca"><span class="selo">K</span><span id="paciente">Kaptora System</span></div>
+    <div class="marca"><span class="selo" data-m="selo">K</span><span id="paciente">Kaptora System</span></div>
     <div class="vista"><small id="contador">Aguardando</small><strong id="nome">—</strong></div>
     <div>
       <div class="instrucao" id="instrucao"></div>
@@ -107,13 +108,15 @@ button,input{font:inherit;color:inherit}
     <div class="chips" id="chips"></div>
     <div class="fotos" id="fotos"></div>
     <button class="btn btn-analise" id="abrir-analise" hidden>Abrir análise e planejamento</button>
-    <div class="rodape"><span class="conexao" id="conexao">Ao vivo</span> · Kaptora System · Produzido por Aurya Nexus Technologies</div>
+    <div class="rodape"><span class="conexao" id="conexao">Ao vivo</span> · <span data-m="rodape">Kaptora System · Produzido por Aurya Nexus Technologies</span></div>
   </aside>
 </section>
 
 <script src="./lib/peerjs-1.5.4.min.js"></script>
 <script>
 const $ = s => document.querySelector(s);
+const produto = () => (window.MARCA && window.MARCA.produto) || 'Kaptora System';
+window.marcaPronta.then(() => { if ($('#paciente').textContent === 'Kaptora System') $('#paciente').textContent = produto(); });
 const params = new URLSearchParams(location.search);
 const NOMES = ['Frontal repouso','Frontal sorriso','3/4 direita','3/4 esquerda','Perfil direito','Perfil esquerdo','Submentoniana','Queixo abaixado','Vista superior'];
 const CHIPS = [['angulo','Ângulo'],['distancia','Distância'],['centro','Centro'],['luz','Luz'],['foco','Foco'],['expressao','Expressão'],['olhos','Olhos']];
@@ -172,7 +175,7 @@ function receber(m){
   if (!m || !m.t) return;
   if (m.t === 'plano' && P.analise){ P.analise.aplicarPlano(m.e); return; }
   if (m.t === 'plano-pedir'){ if (P.analise && P.analise.analiseAberta() && P.conn && P.conn.open) P.conn.send({ t:'plano', e:P.analise.estadoAtual() }); return; }
-  if (m.t === 'ola'){ $('#paciente').textContent = m.paciente ? m.paciente : 'Kaptora System'; }
+  if (m.t === 'ola'){ $('#paciente').textContent = m.paciente ? m.paciente : produto(); }
   if (m.t === 'inicio'){ $('#ampliada').hidden = true; }
   if (m.t === 'estado') mostrarEstado(m);
   if (m.t === 'foto') guardarFoto(m);
@@ -230,7 +233,8 @@ $('#abrir-analise').onclick = async () => {
     const perfil = P.fotos[4] || P.fotos[5];
     await m.abrirAnalise({
       frente: P.fotos[0] ? P.fotos[0].blob : null, perfil: perfil ? perfil.blob : null,
-      paciente: $('#paciente').textContent === 'Kaptora System' ? '' : $('#paciente').textContent,
+      paciente: $('#paciente').textContent === produto() ? '' : $('#paciente').textContent,
+      marca: window.MARCA,
       config: { bundle:caminho('./mediapipe/vision_bundle.js'), wasm:caminho('./mediapipe/wasm'), modelo:caminho('./modelo/face_landmarker.task') },
       mostrar: () => { $('#vivo').hidden = true; $('#entrada').hidden = true; document.body.classList.add('analisando'); },
       aoVoltar: () => { document.body.classList.remove('analisando'); $('#vivo').hidden = false; window.scrollTo(0, 0); ajustarQuadro(); }
