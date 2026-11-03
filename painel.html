@@ -11,13 +11,15 @@
 <style>
 :root{
   --bg:#0a1310; --fg:#f9f5ed; --fg2:rgba(249,245,237,.68); --linha:rgba(249,245,237,.14); --cartao:#13221d;
-  --ouro:#ceb78e; --ok:#7cc097; --erro:#e3897a;
+  --ouro:#ceb78e; --ok:#7cc097; --erro:#e3897a; --alerta:#e2b36b; --acento:#ceb78e; --botao-bg:#ceb78e; --botao-fg:#162d25;
+  --f-num:'JetBrains Mono',ui-monospace,Menlo,monospace; color-scheme:dark;
   --f-display:'Marcellus','Iowan Old Style','Times New Roman',serif;
   --f-corpo:'Manrope',system-ui,-apple-system,'Segoe UI',sans-serif;
 }
 *{box-sizing:border-box}
 html,body{height:100%}
 body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 var(--f-corpo);-webkit-font-smoothing:antialiased;overflow:hidden}
+body.analisando{overflow:auto;height:auto}
 button,input{font:inherit;color:inherit}
 [hidden]{display:none!important}
 .marca{display:flex;align-items:center;gap:10px;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--fg2)}
@@ -65,6 +67,7 @@ button,input{font:inherit;color:inherit}
 .mini.atual{border-color:var(--ouro);box-shadow:0 0 0 1px var(--ouro)}
 .mini b{position:absolute;left:6px;top:6px;background:rgba(10,19,16,.75);border-radius:999px;padding:1px 7px;font-size:11px}
 .rodape{font-size:11px;color:var(--fg2)}
+.btn-analise{width:100%}
 .conexao{display:inline-flex;align-items:center;gap:6px}
 .conexao::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--ok)}
 .conexao.off::before{background:var(--erro)}
@@ -103,6 +106,7 @@ button,input{font:inherit;color:inherit}
     </div>
     <div class="chips" id="chips"></div>
     <div class="fotos" id="fotos"></div>
+    <button class="btn btn-analise" id="abrir-analise" hidden>Abrir análise e planejamento</button>
     <div class="rodape"><span class="conexao" id="conexao">Ao vivo</span> · Kaptora System · Produzido por Aurya Nexus Technologies</div>
   </aside>
 </section>
@@ -191,12 +195,13 @@ function mostrarEstado(m){
 function guardarFoto(m){
   const blob = new Blob([m.img], { type:'image/jpeg' });
   if (P.fotos[m.idx]) URL.revokeObjectURL(P.fotos[m.idx].url);
-  P.fotos[m.idx] = { url:URL.createObjectURL(blob), nome:m.nome, n:m.n };
+  P.fotos[m.idx] = { url:URL.createObjectURL(blob), blob, nome:m.nome, n:m.n };
   const f = $('#flash'); f.classList.add('on'); requestAnimationFrame(() => requestAnimationFrame(() => f.classList.remove('on')));
   montarFotos();
 }
 function montarFotos(){
   const g = $('#fotos'); g.innerHTML = '';
+  $('#abrir-analise').hidden = !(P.fotos[0] || P.fotos[4] || P.fotos[5]);
   NOMES.forEach((nome, i) => {
     const b = document.createElement('button'); b.className = 'mini' + (i === P.atual ? ' atual' : '');
     const f = P.fotos[i];
@@ -212,6 +217,24 @@ function ampliar(i){
   a.querySelector('img').src = f.url; a.querySelector('span').textContent = `${i + 1} · ${NOMES[i]}`; a.hidden = false;
 }
 $('#ampliada').onclick = () => { $('#ampliada').hidden = true; };
+
+/* ---------- Análise e planejamento no tablet (as fotos já estão aqui, em resolução máxima) ---------- */
+function caminho(p){ try { return new URL(p, document.baseURI).href; } catch(e){ return p; } }
+$('#abrir-analise').onclick = async () => {
+  const b = $('#abrir-analise'); b.disabled = true; b.textContent = 'Abrindo…';
+  try {
+    const m = await import('./analise.js');
+    const perfil = P.fotos[4] || P.fotos[5];
+    await m.abrirAnalise({
+      frente: P.fotos[0] ? P.fotos[0].blob : null, perfil: perfil ? perfil.blob : null,
+      paciente: $('#paciente').textContent === 'Kaptora System' ? '' : $('#paciente').textContent,
+      config: { bundle:caminho('./mediapipe/vision_bundle.js'), wasm:caminho('./mediapipe/wasm'), modelo:caminho('./modelo/face_landmarker.task') },
+      mostrar: () => { $('#vivo').hidden = true; $('#entrada').hidden = true; document.body.classList.add('analisando'); },
+      aoVoltar: () => { document.body.classList.remove('analisando'); $('#vivo').hidden = false; window.scrollTo(0, 0); ajustarQuadro(); }
+    });
+  } catch(e){ console.error(e); $('#instrucao').textContent = 'Não consegui abrir a análise: ' + (e.message || e); }
+  b.disabled = false; b.textContent = 'Abrir análise e planejamento';
+};
 
 /* ---------- Moldura do rosto sobre o vídeo ---------- */
 const video = $('#video'), guia = $('#guia');
