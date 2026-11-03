@@ -665,7 +665,7 @@ function desenhar(){
     });
   }
 }
-function pedirDesenho(){ if (!A.renderPendente){ A.renderPendente = true; requestAnimationFrame(desenhar); } }
+function pedirDesenho(){ if (!A.renderPendente){ A.renderPendente = true; requestAnimationFrame(desenhar); } emitirSync(); }
 
 /* ---------- Interface ---------- */
 const ESTILO = `
@@ -981,7 +981,51 @@ export async function abrirAnalise({ frente, perfil, paciente, config, mostrar, 
     if (perfil) await carregarFoto('perfil', perfil);
   } catch(e){ console.error(e); }
   renderTudo();
+  // A abertura não manda o plano vazio para o outro aparelho: só o que a pessoa mudar daqui em diante
+  clearTimeout(syncTimer); syncJson = JSON.stringify(estadoSync());
 }
 
 // Exposto para testes de calibração
+/* ---------- Sincronização entre aparelhos (celular ⇄ tablet) ----------
+   Tudo o que muda o planejamento é enviado ao outro aparelho, que aplica sem reenviar. */
+let syncFn = null, syncTimer = null, syncUltimo = 0, syncJson = '';
+const copia = o => o == null ? o : JSON.parse(JSON.stringify(o));
+function estadoSync(){
+  return { sim:A.sim, tecnica:A.tecnica, mapa:A.mapa, grade:A.grade, vista:A.vista, sel:A.sel, antes:A.antes,
+    desenhos:A.desenhos, traco:A.traco, pts:{ frente:A.dados.frente && A.dados.frente.pts, perfil:A.dados.perfil && A.dados.perfil.pts } };
+}
+function emitirSync(){
+  if (!syncFn || A.aplicando || !analiseAberta()) return;
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(() => {
+    if (A.aplicando) return;
+    const j = JSON.stringify(estadoSync()); if (j === syncJson) return;
+    syncJson = j; syncUltimo = performance.now(); syncFn({ t:'plano', e:JSON.parse(j) });
+  }, Math.max(0, 80 - (performance.now() - syncUltimo)));
+}
+export function analiseAberta(){ const t = document.querySelector('#tela-analise'); return !!(t && !t.hidden); }
+export function conectarSync(fn){ syncFn = fn; syncJson = ''; }
+export function estadoAtual(){ return copia(estadoSync()); }
+export function aplicarPlano(e){
+  if (!e || !analiseAberta()) return;
+  A.aplicando = true;
+  try {
+    const mudouPainel = JSON.stringify(e.sim) !== JSON.stringify(A.sim) || e.tecnica !== A.tecnica;
+    Object.assign(A.sim, e.sim || {}); A.tecnica = e.tecnica || '';
+    A.mapa = !!e.mapa; A.grade = !!e.grade; A.antes = !!e.antes; A.sel = e.sel || null;
+    A.desenhos = copia(e.desenhos) || { frente:[], perfil:[] }; A.traco = copia(e.traco) || null;
+    ['frente', 'perfil'].forEach(v => { if (e.pts && e.pts[v] && A.dados[v] && A.dados[v].pts) A.dados[v].pts = copia(e.pts[v]); });
+    const antes = $('#dfa-antes'); if (antes) antes.setAttribute('aria-pressed', String(A.antes));
+    if (e.vista && e.vista !== A.vista){
+      A.vista = e.vista;
+      document.querySelectorAll('.dfa-aba').forEach(b => b.setAttribute('aria-selected', String(b.dataset.v === A.vista)));
+      renderVazio(); sincronizarBotoes(); atualizarLista(); montarSimulacao();
+    } else {
+      sincronizarBotoes(); atualizarLista(); if (mudouPainel) montarSimulacao();
+    }
+    desenhar();
+  } finally { A.aplicando = false; }
+  syncJson = JSON.stringify(estadoSync());
+}
+
 export const __teste = { A, medidas, montarPontos, carregarFoto, baixarPlano, TECNICAS };

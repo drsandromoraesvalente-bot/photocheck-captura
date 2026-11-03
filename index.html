@@ -1209,6 +1209,7 @@ const TELA = {
         S.fotos.forEach((f, i) => f && this.enviarFoto(i, c));      // tablet que chega no meio recebe o que já foi feito
         if (S.stream) this.ligar(c.peer);
       });
+      c.on('data', m => this.receber(m, c));
       c.on('close', () => { this.conns.delete(c); const ch = this.chamadas.get(c.peer); if (ch) ch.close(); this.chamadas.delete(c.peer); this.atualizarStatus(); });
       c.on('error', e => console.error('tela', e));
     });
@@ -1229,6 +1230,15 @@ const TELA = {
   status(t){ const el = $('#status-tela'); if (el){ el.textContent = t; el.classList.toggle('ok', /conectad/i.test(t) && !/Aguard/.test(t)); } },
   atualizarStatus(){ const n = [...this.conns].filter(c => c.open).length; this.status(n ? (n === 1 ? 'Tablet conectado' : `${n} telas conectadas`) : 'Aguardando o tablet…'); },
   ativa(){ return [...this.conns].some(c => c.open); },
+  // Planejamento sincronizado: o que um aparelho muda, o outro mostra
+  receber(m, de){
+    if (!m || !m.t) return;
+    if (m.t === 'plano'){
+      if (this.analise) this.analise.aplicarPlano(m.e);
+      this.conns.forEach(c => { if (c !== de && c.open) try { c.send(m); } catch(_){} });   // repassa a outras telas
+    }
+    if (m.t === 'plano-pedir' && this.analise && this.analise.analiseAberta()) de.send({ t:'plano', e:this.analise.estadoAtual() });
+  },
   enviar(m){ this.conns.forEach(c => { if (c.open) try { c.send(m); } catch(e){} }); },
   ligar(id){
     const velha = this.chamadas.get(id); if (velha) try { velha.close(); } catch(_){}
@@ -1307,13 +1317,15 @@ $('#ver-fundo').addEventListener('click', e => {
 // DF Análise: módulo carregado só quando usado
 async function abrirDFAnalise(origem){
   const m = await import('./analise.js');
+  TELA.analise = m; m.conectarSync(msg => TELA.enviar(msg));
   const perfil = S.fotos[4] || S.fotos[5];
-  m.abrirAnalise({
+  await m.abrirAnalise({
     frente: origem === 'revisao' && S.fotos[0] ? S.fotos[0].blob : null,
     perfil: origem === 'revisao' && perfil ? perfil.blob : null,
     paciente: origem === 'revisao' ? S.paciente : ($('#paciente').value.trim() || ''),
     config: CONFIG, mostrar, aoVoltar: () => mostrar(origem)
   });
+  TELA.enviar({ t:'plano-pedir' });   // se o tablet já estiver planejando, puxa o plano dele
 }
 $('#analisar').addEventListener('click', () => abrirDFAnalise('revisao'));
 $('#analisar-fotos').addEventListener('click', () => abrirDFAnalise('inicio'));

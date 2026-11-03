@@ -170,6 +170,8 @@ function agendarNova(){
 /* ---------- Mensagens do celular ---------- */
 function receber(m){
   if (!m || !m.t) return;
+  if (m.t === 'plano' && P.analise){ P.analise.aplicarPlano(m.e); return; }
+  if (m.t === 'plano-pedir'){ if (P.analise && P.analise.analiseAberta() && P.conn && P.conn.open) P.conn.send({ t:'plano', e:P.analise.estadoAtual() }); return; }
   if (m.t === 'ola'){ $('#paciente').textContent = m.paciente ? m.paciente : 'Kaptora System'; }
   if (m.t === 'inicio'){ $('#ampliada').hidden = true; }
   if (m.t === 'estado') mostrarEstado(m);
@@ -224,6 +226,7 @@ $('#abrir-analise').onclick = async () => {
   const b = $('#abrir-analise'); b.disabled = true; b.textContent = 'Abrindo…';
   try {
     const m = await import('./analise.js');
+    P.analise = m; m.conectarSync(msg => { if (P.conn && P.conn.open) try { P.conn.send(msg); } catch(_){} });
     const perfil = P.fotos[4] || P.fotos[5];
     await m.abrirAnalise({
       frente: P.fotos[0] ? P.fotos[0].blob : null, perfil: perfil ? perfil.blob : null,
@@ -232,6 +235,7 @@ $('#abrir-analise').onclick = async () => {
       mostrar: () => { $('#vivo').hidden = true; $('#entrada').hidden = true; document.body.classList.add('analisando'); },
       aoVoltar: () => { document.body.classList.remove('analisando'); $('#vivo').hidden = false; window.scrollTo(0, 0); ajustarQuadro(); }
     });
+    if (P.conn && P.conn.open) P.conn.send({ t:'plano-pedir' });   // se o celular já estiver planejando, puxa o plano dele
   } catch(e){ console.error(e); $('#instrucao').textContent = 'Não consegui abrir a análise: ' + (e.message || e); }
   b.disabled = false; b.textContent = 'Abrir análise e planejamento';
 };
