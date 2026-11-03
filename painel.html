@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a1310">
+<title>Kaptora · Tela ao vivo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Marcellus&family=Manrope:wght@400;500;600;700&display=swap">
+<style>
+:root{
+  --bg:#0a1310; --fg:#f9f5ed; --fg2:rgba(249,245,237,.68); --linha:rgba(249,245,237,.14); --cartao:#13221d;
+  --ouro:#ceb78e; --ok:#7cc097; --erro:#e3897a;
+  --f-display:'Marcellus','Iowan Old Style','Times New Roman',serif;
+  --f-corpo:'Manrope',system-ui,-apple-system,'Segoe UI',sans-serif;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 var(--f-corpo);-webkit-font-smoothing:antialiased;overflow:hidden}
+button,input{font:inherit;color:inherit}
+[hidden]{display:none!important}
+.marca{display:flex;align-items:center;gap:10px;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--fg2)}
+.selo{width:28px;height:28px;border-radius:50%;border:1.5px solid var(--ouro);display:grid;place-items:center;font-family:var(--f-display);font-size:13px;letter-spacing:0;color:var(--ouro)}
+
+/* Entrada */
+#entrada{height:100%;display:grid;place-items:center;padding:24px}
+#entrada .caixa{max-width:440px;width:100%;display:grid;gap:18px;text-align:center;justify-items:center}
+#entrada h1{font-family:var(--f-display);font-weight:400;font-size:clamp(30px,5vw,44px);margin:0;line-height:1.1}
+#entrada p{margin:0;color:var(--fg2)}
+#codigo{width:100%;text-align:center;font-size:40px;letter-spacing:.3em;text-transform:uppercase;padding:14px;border-radius:12px;border:1px solid var(--linha);background:var(--cartao)}
+#codigo:focus{outline:2px solid var(--ouro);outline-offset:2px}
+.btn{border:0;border-radius:999px;background:var(--ouro);color:#162d25;font-weight:700;padding:14px 26px;min-height:52px;cursor:pointer}
+.btn:disabled{opacity:.4}
+.status{font-size:14px;color:var(--fg2)}
+
+/* Ao vivo */
+#vivo{height:100%;display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:0}
+@media (max-width:900px), (orientation:portrait){ #vivo{grid-template-columns:1fr;grid-template-rows:minmax(0,1fr) auto} }
+.palco{position:relative;display:grid;place-items:center;background:#000;min-height:0;overflow:hidden}
+.quadro{position:relative;max-width:100%;max-height:100%}
+#video{display:block;width:100%;height:100%;object-fit:contain;background:#000}
+#video.espelhado,#guia.espelhado{transform:scaleX(-1)}
+#guia{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.esperando{position:absolute;inset:0;display:grid;place-items:center;color:var(--fg2);text-align:center;padding:24px}
+.flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;transition:opacity .35s}
+.flash.on{opacity:.75;transition:none}
+#ampliada{position:absolute;inset:0;background:#000;display:grid;place-items:center;cursor:zoom-out}
+#ampliada img{max-width:100%;max-height:100%;object-fit:contain}
+#ampliada span{position:absolute;left:16px;bottom:16px;background:rgba(10,19,16,.8);padding:6px 12px;border-radius:999px;font-weight:700;font-size:14px}
+
+.lado{display:grid;grid-template-rows:auto auto auto auto 1fr auto;align-content:start;gap:16px;padding:20px;border-left:1px solid var(--linha);min-height:0;overflow:auto}
+@media (max-width:900px), (orientation:portrait){ .lado{border-left:0;border-top:1px solid var(--linha);grid-template-rows:auto;max-height:46vh} }
+.vista small{display:block;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--fg2);font-weight:700}
+.vista strong{font-family:var(--f-display);font-weight:400;font-size:30px;line-height:1.15}
+.instrucao{font-size:20px;font-weight:600;line-height:1.35}
+.correcao{font-size:17px;color:var(--ouro);min-height:1.5em}
+.correcao.ok{color:var(--ok)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;align-content:flex-start;align-items:flex-start}
+.chip{font-size:12px;font-weight:700;padding:5px 10px;border-radius:999px;border:1px solid var(--linha);color:var(--fg2)}
+.chip.ok{border-color:var(--ok);color:var(--ok)}
+.fotos{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;align-content:start}
+.mini{position:relative;aspect-ratio:3/4;border-radius:8px;overflow:hidden;background:var(--cartao);border:1px solid var(--linha);display:grid;place-items:center;color:var(--fg2);font-size:13px;font-weight:700;padding:0;cursor:pointer}
+.mini img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.mini.atual{border-color:var(--ouro);box-shadow:0 0 0 1px var(--ouro)}
+.mini b{position:absolute;left:6px;top:6px;background:rgba(10,19,16,.75);border-radius:999px;padding:1px 7px;font-size:11px}
+.rodape{font-size:11px;color:var(--fg2)}
+.conexao{display:inline-flex;align-items:center;gap:6px}
+.conexao::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--ok)}
+.conexao.off::before{background:var(--erro)}
+</style>
+</head>
+<body>
+
+<main id="entrada">
+  <div class="caixa">
+    <div class="marca"><span class="selo">K</span>Kaptora System</div>
+    <h1>Tela ao vivo</h1>
+    <p>No celular da captura, toque em “Conectar tablet” e digite aqui o código que aparecer.</p>
+    <input id="codigo" maxlength="5" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="•••••" aria-label="Código da sala">
+    <button class="btn" id="entrar" disabled>Conectar</button>
+    <p class="status" id="status" aria-live="polite"></p>
+    <p class="rodape">As imagens vão direto do celular para esta tela, criptografadas, sem passar por servidor. Produzido por Aurya Nexus Technologies.</p>
+  </div>
+</main>
+
+<section id="vivo" hidden>
+  <div class="palco">
+    <div class="quadro" id="quadro">
+      <video id="video" playsinline muted autoplay></video>
+      <canvas id="guia"></canvas>
+      <div class="flash" id="flash"></div>
+    </div>
+    <div class="esperando" id="esperando"><p>Conectado. A câmera aparece aqui quando a captura começar.</p></div>
+    <div id="ampliada" hidden><img alt=""><span></span></div>
+  </div>
+  <aside class="lado">
+    <div class="marca"><span class="selo">K</span><span id="paciente">Kaptora System</span></div>
+    <div class="vista"><small id="contador">Aguardando</small><strong id="nome">—</strong></div>
+    <div>
+      <div class="instrucao" id="instrucao"></div>
+      <div class="correcao" id="correcao"></div>
+    </div>
+    <div class="chips" id="chips"></div>
+    <div class="fotos" id="fotos"></div>
+    <div class="rodape"><span class="conexao" id="conexao">Ao vivo</span> · Kaptora System · Produzido por Aurya Nexus Technologies</div>
+  </aside>
+</section>
+
+<script src="./lib/peerjs-1.5.4.min.js"></script>
+<script>
+const $ = s => document.querySelector(s);
+const params = new URLSearchParams(location.search);
+const NOMES = ['Frontal repouso','Frontal sorriso','3/4 direita','3/4 esquerda','Perfil direito','Perfil esquerdo','Submentoniana','Queixo abaixado','Vista superior'];
+const CHIPS = [['angulo','Ângulo'],['distancia','Distância'],['centro','Centro'],['luz','Luz'],['foco','Foco'],['expressao','Expressão'],['olhos','Olhos']];
+const P = { peer:null, conn:null, codigo:'', fotos:Array(9).fill(null), atual:-1, espelhado:false, estado:null, tentativa:null };
+
+// Servidor de sinalização: o público do PeerJS (só troca o "aperto de mão"; a imagem vai direto)
+function opcoesPeer(){
+  const s = params.get('sinal'); if (!s) return { debug:1 };
+  const [host, port] = s.split(':'); return { host, port:Number(port || 443), path:'/', secure:location.protocol === 'https:' && host !== 'localhost', debug:1 };
+}
+
+/* ---------- Entrada ---------- */
+const campo = $('#codigo');
+campo.addEventListener('input', () => { campo.value = campo.value.toUpperCase().replace(/[^A-Z0-9]/g, ''); $('#entrar').disabled = campo.value.length !== 5; });
+campo.addEventListener('keydown', e => { if (e.key === 'Enter' && campo.value.length === 5) conectar(campo.value); });
+$('#entrar').onclick = () => conectar(campo.value);
+
+function status(t){ $('#status').textContent = t || ''; }
+
+function conectar(codigo){
+  P.codigo = codigo; status('Conectando…');
+  manterTelaAcesa();
+  if (!P.peer || P.peer.destroyed){
+    P.peer = new Peer(opcoesPeer());
+    P.peer.on('call', call => {
+      call.answer();
+      call.on('stream', s => { const v = $('#video'); v.srcObject = s; v.play().catch(() => {}); $('#esperando').hidden = true; });
+      call.on('close', () => { $('#video').srcObject = null; $('#esperando').hidden = false; });
+    });
+    P.peer.on('error', e => {
+      if (e.type === 'peer-unavailable'){ status('Não encontrei esse código. Confira no celular.'); agendarNova(); }
+      else if (e.type === 'network' || e.type === 'server-error' || e.type === 'socket-error'){ status('Sem internet para conectar. Tentando de novo…'); agendarNova(); }
+      else console.error(e);
+    });
+    P.peer.on('disconnected', () => { try { P.peer.reconnect(); } catch(_){} });
+  }
+  const abrir = () => {
+    const c = P.peer.connect('kaptora-' + codigo, { reliable:true });
+    P.conn = c;
+    c.on('open', () => {
+      status(''); $('#entrada').hidden = true; $('#vivo').hidden = false; $('#conexao').classList.remove('off'); $('#conexao').textContent = 'Ao vivo';
+      history.replaceState(null, '', '?sala=' + codigo + (params.get('sinal') ? '&sinal=' + params.get('sinal') : ''));
+    });
+    c.on('data', receber);
+    c.on('close', () => { $('#conexao').classList.add('off'); $('#conexao').textContent = 'Reconectando…'; agendarNova(); });
+  };
+  if (P.peer.open) abrir(); else P.peer.once('open', abrir);
+}
+function agendarNova(){
+  clearTimeout(P.tentativa);
+  P.tentativa = setTimeout(() => { if (!P.conn || !P.conn.open) conectar(P.codigo); }, 3000);
+}
+
+/* ---------- Mensagens do celular ---------- */
+function receber(m){
+  if (!m || !m.t) return;
+  if (m.t === 'ola'){ $('#paciente').textContent = m.paciente ? m.paciente : 'Kaptora System'; }
+  if (m.t === 'inicio'){ $('#ampliada').hidden = true; }
+  if (m.t === 'estado') mostrarEstado(m);
+  if (m.t === 'foto') guardarFoto(m);
+  if (m.t === 'limpar'){ P.fotos.forEach(f => f && URL.revokeObjectURL(f.url)); P.fotos = Array(9).fill(null); montarFotos(); }
+  if (m.t === 'fim'){
+    $('#contador').textContent = 'Captura encerrada'; $('#nome').textContent = `${P.fotos.filter(Boolean).length} de 9 vistas`;
+    $('#instrucao').textContent = 'Toque numa foto para ver em tela cheia.'; $('#correcao').textContent = '';
+    P.atual = -1; montarFotos(); desenharGuia(null);
+  }
+}
+function mostrarEstado(m){
+  P.estado = m; P.atual = m.idx;
+  $('#contador').textContent = `Vista ${m.n} de 9`; $('#nome').textContent = m.nome;
+  $('#instrucao').textContent = m.instrucao || '';
+  const c = $('#correcao'); c.textContent = m.correcao && m.correcao !== m.instrucao ? m.correcao : ''; c.classList.toggle('ok', !!m.ok);
+  const ch = $('#chips'); ch.innerHTML = '';
+  CHIPS.forEach(([id, rot]) => { const s = document.createElement('span'); s.className = 'chip' + (m.chips && m.chips[id] ? ' ok' : ''); s.textContent = rot; ch.append(s); });
+  if (m.espelhado !== P.espelhado){ P.espelhado = m.espelhado; ['#video', '#guia'].forEach(s => $(s).classList.toggle('espelhado', P.espelhado)); }
+  if (m.paciente) $('#paciente').textContent = m.paciente;
+  montarFotos(); desenharGuia(m);
+}
+function guardarFoto(m){
+  const blob = new Blob([m.img], { type:'image/jpeg' });
+  if (P.fotos[m.idx]) URL.revokeObjectURL(P.fotos[m.idx].url);
+  P.fotos[m.idx] = { url:URL.createObjectURL(blob), nome:m.nome, n:m.n };
+  const f = $('#flash'); f.classList.add('on'); requestAnimationFrame(() => requestAnimationFrame(() => f.classList.remove('on')));
+  montarFotos();
+}
+function montarFotos(){
+  const g = $('#fotos'); g.innerHTML = '';
+  NOMES.forEach((nome, i) => {
+    const b = document.createElement('button'); b.className = 'mini' + (i === P.atual ? ' atual' : '');
+    const f = P.fotos[i];
+    if (f){ const im = document.createElement('img'); im.src = f.url; im.alt = nome; b.append(im); b.onclick = () => ampliar(i); }
+    else b.append(document.createTextNode(String(i + 1)));
+    const tag = document.createElement('b'); tag.textContent = i + 1; b.append(tag);
+    b.setAttribute('aria-label', `Vista ${i + 1}: ${nome}`);
+    g.append(b);
+  });
+}
+function ampliar(i){
+  const a = $('#ampliada'), f = P.fotos[i];
+  a.querySelector('img').src = f.url; a.querySelector('span').textContent = `${i + 1} · ${NOMES[i]}`; a.hidden = false;
+}
+$('#ampliada').onclick = () => { $('#ampliada').hidden = true; };
+
+/* ---------- Moldura do rosto sobre o vídeo ---------- */
+const video = $('#video'), guia = $('#guia');
+function ajustarQuadro(){
+  const vw = video.videoWidth, vh = video.videoHeight; if (!vw) return;
+  const palco = $('.palco').getBoundingClientRect(), k = Math.min(palco.width / vw, palco.height / vh);
+  const q = $('#quadro'); q.style.width = (vw * k) + 'px'; q.style.height = (vh * k) + 'px';
+  guia.width = Math.round(vw * k * devicePixelRatio); guia.height = Math.round(vh * k * devicePixelRatio);
+  desenharGuia(P.estado);
+}
+video.addEventListener('loadedmetadata', ajustarQuadro); video.addEventListener('resize', ajustarQuadro);
+addEventListener('resize', ajustarQuadro);
+function desenharGuia(m){
+  const cx = guia.getContext('2d'); cx.clearRect(0, 0, guia.width, guia.height);
+  if (!m || !m.caixa || !video.videoWidth) return;
+  const W = guia.width, H = guia.height, c = m.caixa;
+  cx.strokeStyle = m.ok ? '#7cc097' : '#ceb78e'; cx.lineWidth = 3 * devicePixelRatio;
+  const x = c.x0 * W, y = c.y0 * H, w = (c.x1 - c.x0) * W, h = (c.y1 - c.y0) * H, r = Math.min(w, h) * 0.12;
+  cx.beginPath(); cx.roundRect ? cx.roundRect(x, y, w, h, r) : cx.rect(x, y, w, h); cx.stroke();
+}
+
+/* ---------- Tela sempre acesa ---------- */
+let trava = null;
+async function manterTelaAcesa(){ try { if ('wakeLock' in navigator) trava = await navigator.wakeLock.request('screen'); } catch(e){} }
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && P.conn) manterTelaAcesa(); });
+
+montarFotos();
+const sala = (params.get('sala') || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+if (sala.length === 5){ campo.value = sala; conectar(sala); }
+</script>
+</body>
+</html>

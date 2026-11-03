@@ -152,6 +152,16 @@ h2{font-family:var(--f-display);font-weight:400;font-size:22px;margin:0 0 4px}
 .selo-st.pulada,.selo-st.pendente{color:var(--erro);background:color-mix(in srgb,var(--erro) 12%,transparent)}
 .foto .refazer{justify-self:start;margin-top:4px;border:0;background:none;padding:6px 0;font-weight:700;font-size:13px;color:var(--acento)}
 .nota{font-size:13px;color:var(--fg2);margin:0;max-width:62ch}
+.ponte{display:grid;grid-template-columns:auto 1fr;gap:16px;align-items:center;border:1px solid var(--linha);background:var(--cartao);border-radius:var(--raio);padding:14px}
+.ponte #qr{width:132px;height:132px;background:#fff;border-radius:8px;padding:6px;display:grid;place-items:center}
+.ponte #qr svg,.ponte #qr img{width:100%;height:100%}
+.ponte .cod{font-family:var(--f-num);font-size:28px;letter-spacing:.2em;color:var(--fg)}
+.ponte p{margin:0;font-size:14px;color:var(--fg2)}
+.ponte .link{word-break:break-all;font-size:12px}
+.tela-on{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700}
+.tela-on::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--alerta)}
+.tela-on.ok::before{background:var(--ok)}
+@media (max-width:420px){.ponte{grid-template-columns:1fr;justify-items:center;text-align:center}}
 @media (prefers-reduced-motion: reduce){.giro{animation:none}.flash{transition:none}}
 </style>
 </head>
@@ -181,6 +191,21 @@ h2{font-family:var(--f-display);font-weight:400;font-size:22px;margin:0 0 4px}
     </div>
     <label class="chave"><input type="checkbox" id="voz" checked> Voz guiando a paciente</label>
     <label class="chave" id="linha-conversa" hidden><input type="checkbox" id="conversa" checked> Kaptora em conversa livre (usa o microfone e a internet)</label>
+  </section>
+
+  <section class="bloco" aria-labelledby="t-tela">
+    <h2 id="t-tela">Tela ao lado (tablet ou TV)</h2>
+    <p class="nota">Mostra a câmera, as instruções e cada foto em tempo real numa segunda tela. A imagem vai direto do celular para o tablet, criptografada, sem ficar guardada em servidor. Os dois aparelhos precisam de internet; no mesmo Wi-Fi fica mais rápido.</p>
+    <div><button class="btn sec" id="conectar-tela">Conectar tablet</button></div>
+    <div class="ponte" id="ponte" hidden>
+      <div id="qr" aria-label="QR code para abrir a tela ao vivo no tablet"></div>
+      <div>
+        <p>No tablet, leia o QR code com a câmera ou abra o link e digite o código:</p>
+        <div class="cod" id="codigo-sala">—</div>
+        <p class="link" id="link-painel"></p>
+        <p><span class="tela-on" id="status-tela">Aguardando o tablet…</span></p>
+      </div>
+    </div>
   </section>
 
   <section class="bloco" aria-labelledby="t-prep">
@@ -282,6 +307,7 @@ h2{font-family:var(--f-display);font-weight:400;font-size:22px;margin:0 0 4px}
 </main>
 
 <script src="./lib/jszip.min.js"></script>
+<script src="./lib/qrcode-generator-1.4.4.js"></script>
 <script type="module">
 /* =====================================================================
    CONFIGURAÇÃO — valores iniciais, a calibrar no piloto com 20 pacientes
@@ -296,7 +322,7 @@ const CONFIG = {
   bundle: params.get('bundle') || caminho('./mediapipe/vision_bundle.js'),
   wasm:   params.get('wasm')   || caminho('./mediapipe/wasm'),
   modelo: params.get('modelo') || caminho('./modelo/face_landmarker.task'),
-  // ID do agente "Kaptora · Kaptora" no ElevenLabs (público). Vazio = Kaptora só com voz guiada, sem conversa.
+  // ID do agente "Kaptora" no ElevenLabs (público). Vazio = Kaptora só com voz guiada, sem conversa.
   agenteKaptora: params.get('agente') || '',
   estabilidadeMs: 500,      // pose dentro da tolerância por 0,5 s
   dicaMs: 20000,            // instrução detalhada após 20 s
@@ -720,13 +746,14 @@ function bip(){
    CÂMERA
    ===================================================================== */
 const video = $('#video');
-function pararStream(){ if (S.stream){ S.stream.getTracks().forEach(t => t.stop()); S.stream = null; } }
+function pararStream(){ if (S.stream){ S.stream.getTracks().forEach(t => t.stop()); S.stream = null; } TELA.fimCamera(); }
 async function abrirCamera(){
   pararStream();
   S.stream = await navigator.mediaDevices.getUserMedia({
     audio:false, video:{ facingMode:{ ideal:S.facing }, width:{ ideal:1920 }, height:{ ideal:1080 } }
   });
   video.srcObject = S.stream; await video.play();
+  TELA.novaCamera();
   video.classList.toggle('espelhado', S.facing === 'user');
 }
 async function manterTelaAcesa(){
@@ -828,6 +855,7 @@ function atualizarUI(r, d){
     ? `yaw ${sinalTxt(d.pose.yaw)} · pitch ${sinalTxt(d.pose.pitch)} · roll ${sinalTxt(d.pose.roll)}`
     : 'rosto não encontrado';
   desenharPad(VISTAS[S.atual], d && d.pose);
+  TELA.estado(r, d, performance.now());
 }
 
 /* =====================================================================
@@ -958,6 +986,7 @@ async function capturar(manual){
   if (S.fotos[idx] && S.fotos[idx].fundo) URL.revokeObjectURL(S.fotos[idx].fundo.url);
   S.fotos[idx] = { blob, url: URL.createObjectURL(blob), dados, fundo:null };
   gerarFundoEscuro(idx); // em segundo plano: não atrasa a captura
+  TELA.enviarFoto(idx);
   S.puladas.delete(idx); delete S.tentativasPulo[idx];
   montarMiniaturas();
   $('#correcao').textContent = 'Foto salva.';
@@ -982,6 +1011,7 @@ function finalizar(){
 function encerrarCaptura(esperaKaptoraMs=0){
   S.rodando = false; S.fim = new Date(); pararStream(); soltarTela();
   if (!S.refazendo) KAPTORA.encerrar(esperaKaptoraMs);
+  TELA.enviar({ t:'fim' });
   mostrar('revisao'); montarRevisao();
 }
 
@@ -995,6 +1025,7 @@ async function iniciarCaptura(fila, refazendo=false){
   if (kaptoraPedida){ KAPTORA.posicaoAvisada = -1; KAPTORA.iniciar(); }
   else if (!refazendo && S.fotos.every(f => !f)) falar('Olá, eu sou a Kaptora. Vou te ajudar a fazer as fotos da sua avaliação facial. Leva menos de dois minutos.', true);
   mostrar('captura'); montarChips(); S.atual = primeira; montarMiniaturas();
+  TELA.enviar({ t:'inicio' });
   $('#btn-voz').setAttribute('aria-pressed', String(S.voz));
   aviso('Preparando o rastreamento facial…', 'Isso leva alguns segundos na primeira vez.');
   try { await carregarModelo(); }
@@ -1147,6 +1178,87 @@ function gerarFundoEscuro(idx){
 S.verFundo = false;
 
 /* =====================================================================
+   TELA AO LADO (tablet/TV): vídeo ao vivo + estado + fotos, ponto a ponto (WebRTC via PeerJS)
+   O servidor público do PeerJS só faz o "aperto de mão"; a imagem vai direto entre os aparelhos.
+   ===================================================================== */
+const TELA = {
+  peer:null, codigo:'', conns:new Set(), chamadas:new Map(), ultimoEstado:0,
+  async carregar(){
+    if (window.Peer) return;
+    await new Promise((ok, erro) => { const s = document.createElement('script'); s.src = './lib/peerjs-1.5.4.min.js'; s.onload = ok; s.onerror = () => erro(new Error('PeerJS não carregou')); document.head.append(s); });
+  },
+  opcoes(){
+    const s = params.get('sinal'); if (!s) return { debug:1 };
+    const [host, port] = s.split(':'); return { host, port:Number(port || 443), path:'/', secure:location.protocol === 'https:' && host !== 'localhost', debug:1 };
+  },
+  novoCodigo(){ const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let c = ''; const r = crypto.getRandomValues(new Uint8Array(5)); r.forEach(n => c += A[n % A.length]); return c; },
+  async iniciar(){
+    $('#conectar-tela').disabled = true; $('#ponte').hidden = false; this.status('Preparando a conexão…');
+    try { await this.carregar(); } catch(e){ this.status('Não consegui carregar a conexão. Confira a internet.'); $('#conectar-tela').disabled = false; return; }
+    this.abrirSala();
+  },
+  abrirSala(){
+    if (this.peer && !this.peer.destroyed) this.peer.destroy();
+    this.codigo = this.novoCodigo();
+    const peer = this.peer = new Peer('kaptora-' + this.codigo, this.opcoes());
+    peer.on('open', () => { this.mostrarCodigo(); this.status('Aguardando o tablet…'); });
+    peer.on('connection', c => {
+      c.on('open', () => {
+        this.conns.add(c); this.atualizarStatus();
+        c.send({ t:'ola', paciente:S.paciente || $('#paciente').value.trim() });
+        S.fotos.forEach((f, i) => f && this.enviarFoto(i, c));      // tablet que chega no meio recebe o que já foi feito
+        if (S.stream) this.ligar(c.peer);
+      });
+      c.on('close', () => { this.conns.delete(c); const ch = this.chamadas.get(c.peer); if (ch) ch.close(); this.chamadas.delete(c.peer); this.atualizarStatus(); });
+      c.on('error', e => console.error('tela', e));
+    });
+    peer.on('error', e => {
+      if (e.type === 'unavailable-id') return this.abrirSala();         // código em uso: gera outro
+      if (e.type === 'network' || e.type === 'server-error' || e.type === 'socket-error') this.status('Sem conexão com a internet para a tela ao lado.');
+      console.error('tela', e);
+    });
+    peer.on('disconnected', () => { try { peer.reconnect(); } catch(_){} });
+  },
+  mostrarCodigo(){
+    const base = location.href.split('?')[0].split('#')[0].replace(/[^/]*$/, '');
+    const sinal = params.get('sinal');
+    const link = `${base}painel.html?sala=${this.codigo}${sinal ? '&sinal=' + encodeURIComponent(sinal) : ''}`;
+    $('#codigo-sala').textContent = this.codigo; $('#link-painel').textContent = link;
+    try { const q = qrcode(0, 'M'); q.addData(link); q.make(); $('#qr').innerHTML = q.createSvgTag({ cellSize:4, margin:0, scalable:true }); } catch(e){ $('#qr').hidden = true; }
+  },
+  status(t){ const el = $('#status-tela'); if (el){ el.textContent = t; el.classList.toggle('ok', /conectad/i.test(t) && !/Aguard/.test(t)); } },
+  atualizarStatus(){ const n = [...this.conns].filter(c => c.open).length; this.status(n ? (n === 1 ? 'Tablet conectado' : `${n} telas conectadas`) : 'Aguardando o tablet…'); },
+  ativa(){ return [...this.conns].some(c => c.open); },
+  enviar(m){ this.conns.forEach(c => { if (c.open) try { c.send(m); } catch(e){} }); },
+  ligar(id){
+    const velha = this.chamadas.get(id); if (velha) try { velha.close(); } catch(_){}
+    if (!S.stream) return;
+    const ch = this.peer.call(id, S.stream); this.chamadas.set(id, ch);
+  },
+  novaCamera(){ if (!this.ativa()) return; this.conns.forEach(c => c.open && this.ligar(c.peer)); },
+  fimCamera(){ this.chamadas.forEach(ch => { try { ch.close(); } catch(_){} }); this.chamadas.clear(); },
+  estado(r, d, agora){
+    if (!this.ativa() || agora - this.ultimoEstado < 200) return; this.ultimoEstado = agora;
+    const v = VISTAS[S.atual];
+    this.enviar({ t:'estado', idx:S.atual, n:v.n, nome:v.nome, instrucao:$('#instrucao').textContent, correcao:$('#correcao').textContent,
+      ok:tudoOk(r), chips:Object.fromEntries(CHIPS.map(([id]) => [id, !!(r[id] && r[id].ok)])),
+      caixa:d ? { x0:d.caixa.x0, x1:d.caixa.x1, y0:d.caixa.y0, y1:d.caixa.y1 } : null, espelhado:S.facing === 'user', paciente:S.paciente });
+  },
+  async enviarFoto(i, so){
+    const f = S.fotos[i]; if (!f || !(so ? so.open : this.ativa())) return;
+    try {
+      const bmp = await createImageBitmap(f.blob), k = Math.min(1, 1600 / Math.max(bmp.width, bmp.height));
+      const cv = document.createElement('canvas'); cv.width = Math.round(bmp.width * k); cv.height = Math.round(bmp.height * k);
+      cv.getContext('2d').drawImage(bmp, 0, 0, cv.width, cv.height);
+      const b = await new Promise(res => cv.toBlob(res, 'image/jpeg', 0.88));
+      const m = { t:'foto', idx:i, n:VISTAS[i].n, nome:VISTAS[i].nome, img:await b.arrayBuffer() };
+      if (so) so.send(m); else this.enviar(m);
+    } catch(e){ console.error('tela foto', e); }
+  }
+};
+$('#conectar-tela').addEventListener('click', () => TELA.iniciar());
+
+/* =====================================================================
    TELAS E EVENTOS
    ===================================================================== */
 function mostrar(t){
@@ -1174,6 +1286,7 @@ $('#iniciar').addEventListener('click', () => {
   S.voz = $('#voz').checked; S.conversa = !!CONFIG.agenteKaptora && $('#conversa').checked; S.consentimentoEm = new Date().toISOString(); S.inicio = new Date(); S.fim = null;
   S.fotos.forEach(f => f && URL.revokeObjectURL(f.url));
   S.fotos = Array(9).fill(null); S.puladas = new Set(); S.tentativasPulo = {};
+  TELA.enviar({ t:'limpar' }); TELA.enviar({ t:'ola', paciente:S.paciente });
   iniciarCaptura([0,1,2,3,4,5,6,7,8]);
 });
 $('#encerrar').addEventListener('click', () => { player.pause(); if ('speechSynthesis' in window) speechSynthesis.cancel(); S.refazendo = false; encerrarCaptura(); });
@@ -1220,7 +1333,7 @@ $('#linha-conversa').hidden = !CONFIG.agenteKaptora;
 carregarModelo().catch(() => {});
 
 // Exposto para testes de calibração no console
-window.__df = { CONFIG, VISTAS, FRASES, poseDaMatriz, poseDosPontos, avaliar, S };
+window.__df = { CONFIG, VISTAS, FRASES, poseDaMatriz, poseDosPontos, avaliar, S, TELA };
 </script>
 </body>
 </html>
