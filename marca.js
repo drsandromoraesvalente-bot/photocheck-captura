@@ -1,12 +1,12 @@
 /* =====================================================================
-   Kaptora System — identidade da marca (white label)
+   Kaptora Face Scan — identidade da marca (white label)
    A marca vem de ./marcas/<id>.json (link com ?marca=<id>) e fica guardada
    neste aparelho. ?marca=padrao volta para a marca Kaptora.
    ===================================================================== */
 (function(){
   const PADRAO = {
     id: 'kaptora',
-    produto: 'Kaptora System',
+    produto: 'Kaptora Face Scan',
     subtitulo: 'Avaliação Facial Completa',
     clinica: 'Drawn Face Academy',
     selo: 'K',
@@ -20,7 +20,7 @@
     modulos: { telaAoVivo: true, analise: true, metodoDrawnFace: true, fundoEscuro: true, conversaLivre: true },
     consentimento: 'As fotos do rosto e os pontos faciais calculados são dados biométricos, ou seja, dados pessoais sensíveis. Eles serão usados apenas para avaliação, planejamento e acompanhamento do tratamento, ficam guardados com acesso restrito à equipe responsável e podem ser excluídos a pedido da paciente a qualquer momento. Este termo é separado da autorização de uso de imagem em redes sociais.',
     rodape: '',                                 // texto livre do cliente; vazio = só o nome da clínica
-    creditoTecnologia: true                     // "Tecnologia Kaptora System · Aurya Nexus Technologies"
+    creditoTecnologia: true                     // "Tecnologia Kaptora Face Scan · Aurya Nexus Technologies"
   };
   const CHAVE = 'kaptora-marca', CHAVE_PREVIA = 'kaptora-marca-previa';
   // Servidor de contas do Kaptora (Supabase). A chave publicável é pública por natureza;
@@ -75,8 +75,8 @@
       const d = document.createElement('div');
       d.setAttribute('role', 'alert');
       d.style.cssText = 'position:fixed;inset:0;z-index:99999;background:#0a1310;color:#f9f5ed;display:grid;place-items:center;padding:24px;text-align:center;font:16px/1.5 Manrope,system-ui,sans-serif';
-      d.innerHTML = '<div style="max-width:420px;display:grid;gap:12px"><div class="k-bloq-nome" style="font:28px Marcellus,serif;text-transform:uppercase;letter-spacing:.04em"></div><p style="margin:0;opacity:.8">O acesso a este sistema está suspenso. Fale com o administrador da sua clínica ou com a Kaptora System para reativar a licença.</p></div>';
-      d.querySelector('.k-bloq-nome').textContent = M.produto || 'Kaptora System';
+      d.innerHTML = '<div style="max-width:420px;display:grid;gap:12px"><div class="k-bloq-nome" style="font:28px Marcellus,serif;text-transform:uppercase;letter-spacing:.04em"></div><p style="margin:0;opacity:.8">O acesso a este sistema está suspenso. Fale com o administrador da sua clínica ou com a Kaptora Face Scan para reativar a licença.</p></div>';
+      d.querySelector('.k-bloq-nome').textContent = M.produto || 'Kaptora Face Scan';
       document.body.append(d);
       return;
     }
@@ -135,7 +135,7 @@
     const partes = [M.produto];
     if (M.clinica) partes.push(M.clinica);
     if (M.rodape) partes.push(M.rodape);
-    if (M.creditoTecnologia !== false) partes.push(M.id === 'kaptora' ? 'Produzido por Aurya Nexus Technologies' : 'Tecnologia Kaptora System · Aurya Nexus Technologies');
+    if (M.creditoTecnologia !== false) partes.push(M.id === 'kaptora' ? 'Produzido por Aurya Nexus Technologies' : 'Tecnologia Kaptora Face Scan · Aurya Nexus Technologies');
     return partes.join(' · ');
   }
 

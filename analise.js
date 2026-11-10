@@ -1,5 +1,5 @@
 /* =====================================================================
-   DF Análise — módulo de análise facial 2D do Kaptora System
+   DF Análise — módulo de análise facial 2D do Kaptora Face Scan
    Mede a face nas fotos de frente e de perfil a partir dos 478 pontos do
    MediaPipe, desenha cada medida sobre a foto, dá nota de 0 a 10, permite
    ajustar os pontos à mão e simula mento, papada e malar.
@@ -113,7 +113,7 @@ const A = {
 };
 
 // Marca (white label) e módulo do método Drawn Face (mapa de zonas + planejamento DF)
-const marca = () => A.marca || window.MARCA || { produto:'Kaptora System', modulos:{ metodoDrawnFace:true } };
+const marca = () => A.marca || window.MARCA || { produto:'Kaptora Face Scan', modulos:{ metodoDrawnFace:true } };
 const metodoDF = () => !marca().modulos || marca().modulos.metodoDrawnFace !== false;
 
 /* ---------- Detector ---------- */
@@ -740,7 +740,7 @@ function montarTela(){
   const st = document.createElement('style'); st.textContent = ESTILO; document.head.append(st);
   const s = document.createElement('main'); s.id = 'tela-analise'; s.hidden = true;
   s.innerHTML = `
-    <div class="dfa-topo"><button class="dfa-voltar" id="dfa-voltar">← Voltar</button><div class="marca" style="margin-left:auto"><span class="selo" data-m="selo">K</span><span class="wordmark" data-m="wordmark"><b>Kaptora</b><small>System</small></span></div></div>
+    <div class="dfa-topo"><button class="dfa-voltar" id="dfa-voltar">← Voltar</button><div class="marca" style="margin-left:auto"><span class="selo" data-m="selo">K</span><span class="wordmark" data-m="wordmark"><b>Kaptora</b><small>Face Scan</small></span></div></div>
     <header><h1 id="dfa-titulo">Análise facial</h1><p class="dfa-sub" id="dfa-sub"></p></header>
     <div class="dfa-abas" role="tablist">
       <button class="dfa-aba" role="tab" id="dfa-aba-frente" data-v="frente" aria-selected="true">Frente</button>
@@ -767,7 +767,7 @@ function montarTela(){
     <div class="dfa-lista" id="dfa-lista"></div>
     <section class="dfa-sim" id="dfa-sim"></section>
     <p class="dfa-nota-legal">Análise de apoio à consulta. As medidas são estimadas a partir de foto 2D, com a íris como régua (11,7 mm), e devem ser conferidas pelo profissional. A simulação é ilustrativa e educativa: não é promessa de resultado.</p>
-    <p class="dfa-nota-legal" id="dfa-rodape">Kaptora System · Produzido por Aurya Nexus Technologies</p>`;
+    <p class="dfa-nota-legal" id="dfa-rodape">Kaptora Face Scan · Produzido por Aurya Nexus Technologies</p>`;
   document.body.append(s);
   $('#dfa-voltar').onclick = () => { s.hidden = true; A.aoVoltar && A.aoVoltar(); };
   s.querySelectorAll('.dfa-aba').forEach(b => b.onclick = () => trocarVista(b.dataset.v));
