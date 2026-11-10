@@ -82,14 +82,16 @@ h2{font-family:var(--f-display);font-weight:400;font-size:22px;margin:0}
 <body>
 <header class="topo">
   <div class="marca"><span class="selo">K</span><span class="wordmark"><b>Kaptora</b><small>Face Scan</small></span><span class="marca-sub" style="flex-basis:auto;padding-left:6px">Administração</span></div>
-  <div class="acoes" style="align-items:center"><span class="quem" id="quem"></span><a class="btn sec" href="./?marca=padrao" target="_blank" rel="noopener">Abrir o app Kaptora</a><button class="btn sec" id="sair" hidden>Sair</button></div>
+  <div class="acoes" style="align-items:center"><span class="quem" id="quem"></span><a class="btn sec" href="./captura.html?marca=padrao" target="_blank" rel="noopener">Abrir o app Kaptora</a><button class="btn sec" id="sair" hidden>Sair</button></div>
 </header>
 
 <section id="login">
   <div class="cartao">
-    <div><h2>Entrar na administração</h2><p class="sub">Acesso restrito ao super admin da Kaptora Face Scan. Você recebe um link de entrada no seu e-mail.</p></div>
-    <div class="campo"><label for="email">E-mail</label><input type="email" id="email" autocomplete="email" placeholder="seu@email.com"></div>
-    <button class="btn" id="entrar">Enviar link de entrada</button>
+    <div><h2>Entrar na administração</h2><p class="sub">Acesso restrito ao super admin da Kaptora Face Scan.</p></div>
+    <div class="campo"><label for="email">E-mail</label><input type="email" id="email" autocomplete="username" placeholder="seu@email.com"></div>
+    <div class="campo"><label for="senha">Senha</label><input type="password" id="senha" autocomplete="current-password"></div>
+    <button class="btn" id="entrar">Entrar</button>
+    <a class="sub" href="./" style="font-size:13px">Ir para o painel da clínica</a>
     <p class="status" id="status-login" aria-live="polite"></p>
   </div>
 </section>
@@ -163,6 +165,7 @@ h2{font-family:var(--f-display);font-weight:400;font-size:22px;margin:0}
         <div class="campo"><label for="f-validade">Válido até</label><input type="date" id="f-validade"></div>
         <div class="campo"><label for="f-responsavel">Responsável no cliente</label><input type="text" id="f-responsavel" placeholder="Nome"></div>
         <div class="campo"><label for="f-contato">Contato</label><input type="text" id="f-contato" placeholder="E-mail ou WhatsApp"></div>
+        <div class="campo"><label for="f-admin">E-mail do administrador da clínica</label><input type="text" id="f-admin" placeholder="login de quem administra a clínica"><span class="ajuda">Ao salvar, entra na equipe da clínica como administrador. A senha de acesso é liberada pela Kaptora.</span></div>
       </div>
     </section>
 
@@ -252,7 +255,7 @@ function atualizarPrevia(){
   clearTimeout(tPrevia);
   tPrevia = setTimeout(() => {
     gravar(PREVIA, Object.assign(copia(atual), { produto: atual.produto || 'Nome do produto' }));
-    const f = $('#previa'), url = './?marca=__previa';
+    const f = $('#previa'), url = './captura.html?marca=__previa';
     if (f.src.endsWith(url.slice(1))) f.contentWindow.location.reload(); else f.src = url;
   }, 700);
 }
@@ -308,6 +311,12 @@ $('#salvar').onclick = async () => {
   if (!error && idOriginal && idOriginal !== atual.id) await sb.from('marcas').delete().eq('id', idOriginal);
   b.disabled = false;
   if (error) return status('Não salvou: ' + error.message, true);
+  const adm = $('#f-admin').value.trim().toLowerCase();
+  if (adm){
+    const r = await sb.from('membros').upsert({ marca_id:atual.id, email:adm, papel:'admin' }, { onConflict:'marca_id,email' });
+    if (r.error) return status('Marca salva, mas não incluí o administrador: ' + r.error.message, true);
+    $('#f-admin').value = '';
+  }
   await carregarMarcas(); idOriginal = atual.id;
   $('#titulo').textContent = atual.produto; $('#excluir').hidden = false; listar(); status('Marca salva e publicada.');
 };
@@ -334,18 +343,17 @@ $('#importar').onchange = async e => {
   catch(err){ status('Esse arquivo não é uma marca válida.', true); }
 };
 
-/* ---------- Entrada (link mágico por e-mail) ---------- */
+/* ---------- Entrada (e-mail e senha) ---------- */
 function statusLogin(t, erro){ const s = $('#status-login'); s.textContent = t; s.style.color = erro ? 'var(--erro)' : 'var(--ok)'; }
 $('#entrar').onclick = async () => {
   const email = $('#email').value.trim().toLowerCase();
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return statusLogin('Digite um e-mail válido.', true);
-  $('#entrar').disabled = true; statusLogin('Enviando…');
-  const { error } = await sb.auth.signInWithOtp({ email, options:{ emailRedirectTo: location.href.split('#')[0].split('?')[0], shouldCreateUser:true } });
+  $('#entrar').disabled = true; statusLogin('Entrando…');
+  const { error } = await sb.auth.signInWithPassword({ email, password:$('#senha').value });
   $('#entrar').disabled = false;
-  if (error) return statusLogin('Não consegui enviar: ' + error.message, true);
-  statusLogin('Pronto. Abra o e-mail neste mesmo aparelho e toque no link de entrada.');
+  if (error) return statusLogin(/invalid/i.test(error.message) ? 'E-mail ou senha não conferem.' : 'Não consegui entrar: ' + error.message, true);
 };
-$('#email').addEventListener('keydown', e => { if (e.key === 'Enter') $('#entrar').click(); });
+['#email', '#senha'].forEach(s => $(s).addEventListener('keydown', e => { if (e.key === 'Enter') $('#entrar').click(); }));
 $('#sair').onclick = async () => { await sb.auth.signOut(); location.reload(); };
 
 async function entrarNoPainel(sessao){

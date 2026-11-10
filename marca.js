@@ -89,7 +89,7 @@
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){${escuro}}}
 :root[data-theme="dark"]{${escuro}}`;
       document.head.append(st);
-    }
+    } else { const st = document.getElementById('marca-cores'); if (st) st.remove(); }
     const titulo = document.querySelector('title');
     if (titulo && titulo.dataset.m) titulo.textContent = titulo.dataset.m === 'painel' ? `${M.produto} · Tela ao vivo` : M.produto;
     estiloMarca();
@@ -142,6 +142,7 @@
   window.MARCA_PADRAO = PADRAO;
   window.MARCA_rodape = MARCA_rodape;
   window.MARCA_textos = raiz => { if (window.MARCA){ estiloMarca(); textos(raiz || document, window.MARCA); } };
+  window.MARCA_aplicar = M => { const m = mesclar(PADRAO, M || {}); window.MARCA = m; aplicar(m); return m; };
   window.marcaPronta = carregar().then(M => {
     window.MARCA = M;
     const go = () => { if (/admin\.html$/.test(location.pathname)) estiloMarca(); else aplicar(M); };   // o painel do administrador mantém a cara Kaptora
