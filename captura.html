@@ -193,6 +193,12 @@ h2{font-family:var(--f-display);font-weight:400;font-size:22px;margin:0 0 4px}
       <label class="modo"><input type="radio" name="modo" id="modo-consultorio" value="consultorio" checked><strong>No consultório</strong><span>Câmera traseira, celular no tripé, profissional conduz</span></label>
       <label class="modo"><input type="radio" name="modo" id="modo-casa" value="casa"><strong>Em casa</strong><span>Câmera frontal, a paciente se vê e a voz conduz</span></label>
     </div>
+    <div class="campo"><span style="font-weight:600;font-size:14px">Fundo das fotos</span>
+      <div class="modos" role="radiogroup" aria-label="Fundo das fotos">
+        <label class="modo"><input type="radio" name="fundo" id="fundo-escuro" value="escuro" checked><strong>Escuro</strong><span>Grafite liso, destaca o contorno</span></label>
+        <label class="modo"><input type="radio" name="fundo" id="fundo-claro" value="claro"><strong>Claro</strong><span>Cinza-claro liso, sem sombras</span></label>
+      </div>
+    </div>
     <label class="chave"><input type="checkbox" id="voz" checked> Voz guiando a paciente</label>
     <label class="chave" id="linha-conversa" hidden><input type="checkbox" id="conversa" checked> <span data-m="assistente">Kaptora</span> em conversa livre (usa o microfone e a internet)</label>
   </section>
@@ -217,7 +223,9 @@ h2{font-family:var(--f-display);font-weight:400;font-size:22px;margin:0 0 4px}
     <ul class="lista-prep">
       <li><label><input type="checkbox" id="p1"> Cabelo preso e orelhas visíveis</label></li>
       <li><label><input type="checkbox" id="p2"> Sem óculos, sem brincos grandes e sem maquiagem pesada</label></li>
-      <li><label><input type="checkbox" id="p3"> Parede lisa e neutra atrás da paciente</label></li>
+      <li><label><input type="checkbox" id="p6"> Blusa sem gola e sem manga: pescoço e ombros livres</label></li>
+      <li><label><input type="checkbox" id="p7"> Cadeira giratória firme, travada no lugar</label></li>
+      <li><label><input type="checkbox" id="p3"> O fundo pode ser qualquer um: o sistema troca por fundo liso</label></li>
       <li><label><input type="checkbox" id="p4"> Luz frontal e suave, sem luz forte de teto</label></li>
       <li><label><input type="checkbox" id="p5"> Celular na altura dos olhos, a cerca de 1 metro</label></li>
     </ul>
@@ -304,7 +312,7 @@ h2{font-family:var(--f-display);font-weight:400;font-size:22px;margin:0 0 4px}
     <a class="btn sec" id="ir-ficha" href="./" hidden>Ver na ficha</a>
     <button class="btn" id="analisar">Analisar (DF Análise)</button>
     <button class="btn sec" id="baixar">Baixar pacote da sessão (.zip)</button>
-    <button class="btn sec" id="ver-fundo" aria-pressed="false">Ver com fundo escuro</button>
+    <button class="btn sec" id="ver-fundo" aria-pressed="false">Ver originais (sem fundo)</button>
     <button class="btn sec" id="continuar" hidden>Capturar vistas pendentes</button>
     <button class="btn sec" id="nova">Nova avaliação</button>
   </div>
@@ -338,7 +346,7 @@ const CONFIG = {
   dicaMs: 20000,            // instrução detalhada após 20 s
   pularMs: 40000,           // oferece pular após 40 s
   intervaloCorrecaoMs: 2500,// no máximo uma correção falada a cada 2,5 s
-  distancia: [0.32, 0.72],  // altura do rosto (testa ao queixo) / altura do quadro
+  distancia: [0.22, 0.72],  // altura do rosto / altura do quadro: enquadramento amplo; depois o sistema recorta rosto e pescoço
   centro: 0.12,             // desvio máximo do centro do quadro
   esperaSuaveMs: 1500,      // luz e foco não travam o disparo: com o resto certo por 1,5 s, a foto sai
   brilho: [55, 215],        // brilho médio do rosto, 0–255
@@ -540,7 +548,7 @@ function avaliar(vista, d, m){
   r.rosto = { id:'rosto', ok:true, msg:null };
   const { yaw, pitch, roll } = d.pose;
   // Tolerância ampliada: em casa (celular na mão) mais folga que no consultório (tripé)
-  const f = S.modo === 'casa' ? 2 : 1.5;
+  const f = S.modo === 'casa' ? 1.6 : 1.2;   // mais rigoroso: cabeça inclinada ou girada não passa
   const amplia = ([a, b]) => { const c = (a + b) / 2, h = (b - a) / 2 * f; return [c - h, c + h]; };
   const fy = amplia(vista.yaw), fp = amplia(vista.pitch), fr = vista.roll * f;
   let msgAng = null;
@@ -595,8 +603,8 @@ function escolherVoz(){
   if (!('speechSynthesis' in window)) return;
   const vs = speechSynthesis.getVoices();
   const br = vs.filter(v => /pt[-_]BR/i.test(v.lang));
-  vozPt = br.find(v => /luciana|francisca|thalita|vit[oó]ria|female|feminina/i.test(v.name))
-       || br.find(v => /google/i.test(v.name)) || br[0] || vs.find(v => /^pt/i.test(v.lang)) || null;
+  vozPt = br.find(v => /luciana|francisca|thalita|vit[oó]ria|feminina/i.test(v.name))
+       || br.find(v => /google/i.test(v.name)) || br[0] || null;   // só português do Brasil
 }
 if ('speechSynthesis' in window){ escolherVoz(); speechSynthesis.onvoiceschanged = escolherVoz; }
 /* Voz da Kaptora: cada frase tem um MP3 em ./audio/<id>.mp3 (gravado no ElevenLabs).
@@ -627,20 +635,21 @@ const FRASES = [
 ];
 const ID_DA_FRASE = new Map(); FRASES.forEach(([id, t]) => { if (!ID_DA_FRASE.has(t)) ID_DA_FRASE.set(t, id); });
 const SEM_AUDIO = new Set();
-if (NOME_IA !== 'Kaptora' || MARCA.assistente.saudacao !== window.MARCA_PADRAO.assistente.saudacao) SEM_AUDIO.add('abertura'); // o MP3 gravado diz "Kaptora"
+const semAberturaGravada = NOME_IA !== 'Kaptora' || MARCA.assistente.saudacao !== window.MARCA_PADRAO.assistente.saudacao; // o MP3 gravado diz "Kaptora"
 const player = new Audio(); player.preload = 'auto';
 // Os MP3 da Kaptora ainda podem não existir. Confere uma vez ao abrir a página: sem eles,
 // a voz do celular fala direto, já no toque do botão (exigência do iPhone para liberar a voz).
 let audiosKaptora = false;
 fetch('./audio/abertura.mp3', { method:'HEAD', cache:'no-store' })
-  .then(r => { audiosKaptora = r.ok; if (!r.ok) FRASES.forEach(([id]) => SEM_AUDIO.add(id)); })
+  .then(r => { audiosKaptora = r.ok; if (r.ok) FRASES.forEach(([id]) => { if (id !== 'abertura' || !semAberturaGravada) SEM_AUDIO.delete(id); }); })
   .catch(() => FRASES.forEach(([id]) => SEM_AUDIO.add(id)));
 FRASES.forEach(([id]) => SEM_AUDIO.add(id)); // até a conferência responder, usa a voz do celular
 let vozLiberada = false, canceladoEm = -1e9;
 function falarSintetico(texto){
   if (!('speechSynthesis' in window)) return;
   const u = new SpeechSynthesisUtterance(texto);
-  u.lang = 'pt-BR'; if (vozPt) u.voice = vozPt; u.rate = 1.02; u.pitch = 1.04; u.volume = 1;
+  if (!vozPt) escolherVoz();
+  u.lang = 'pt-BR'; if (vozPt) u.voice = vozPt; u.rate = 1.0; u.pitch = 1.04; u.volume = 1;
   u.onstart = () => { vozLiberada = true; };
   if (speechSynthesis.paused) speechSynthesis.resume();
   // iPhone: falar logo depois de um cancelamento às vezes engole a fala; um respiro curto evita isso.
@@ -728,7 +737,43 @@ function falar(texto, interromper=false){
 }
 let filaFala = null;
 player.addEventListener('ended', () => { if (filaFala){ const t = filaFala; filaFala = null; tocar(t); } });
+/* Voz da assistente gerada no ElevenLabs (voz da Vicky por padrão), guardada no servidor:
+   cada fala é gerada uma única vez; depois toca direto do armazenamento. Sem internet, usa a voz do celular. */
+const VOZ = { id:(MARCA.assistente && MARCA.assistente.vozId) || '7eUAxNOneHxqfyRS77mW', urls:new Map(), pedidas:new Set(), sb:null };
+async function hashVoz(t){ const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(VOZ.id + '|' + t)); return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join(''); }
+async function clienteVoz(){
+  if (VOZ.sb !== null) return VOZ.sb;
+  try {
+    if (!window.supabase) await new Promise((ok, erro) => { const sc = document.createElement('script'); sc.src = './lib/supabase-js-2.45.4.js'; sc.onload = ok; sc.onerror = erro; document.head.append(sc); });
+    let daFicha = null; try { daFicha = FICHA.sb; } catch(e){}
+    const c = daFicha || window.supabase.createClient(window.KAPTORA_SUPABASE.url, window.KAPTORA_SUPABASE.chave);
+    const { data:{ session } } = await c.auth.getSession();
+    VOZ.sb = session ? c : false;
+  } catch(e){ VOZ.sb = false; }
+  return VOZ.sb;
+}
+async function garantirVoz(texto){
+  if (!texto || VOZ.urls.has(texto) || VOZ.pedidas.has(texto)) return;
+  VOZ.pedidas.add(texto);
+  try {
+    const url = `${window.KAPTORA_SUPABASE.url}/storage/v1/object/public/vozes/${VOZ.id}/${await hashVoz(texto)}.mp3`;
+    const r = await fetch(url, { method:'HEAD', cache:'no-store' });
+    if (r.ok){ VOZ.urls.set(texto, url); return; }
+    const c = await clienteVoz(); if (!c) return;                 // só a equipe logada gera falas novas
+    const { data, error } = await c.functions.invoke('voz', { body:{ texto, voz:VOZ.id } });
+    if (!error && data && data.url) VOZ.urls.set(texto, data.url);
+  } catch(e){ /* sem internet: fica a voz do celular */ }
+  finally { VOZ.pedidas.delete(texto); }
+}
+async function prepararVozes(){ for (const [, t] of FRASES) await garantirVoz(t); }
 function tocar(texto){
+  if (VOZ.urls.has(texto)){
+    let caiu = false;
+    const reserva = () => { if (caiu) return; caiu = true; VOZ.urls.delete(texto); player.pause(); player.removeAttribute('src'); falarSintetico(texto); };
+    player.onerror = reserva; player.src = VOZ.urls.get(texto); player.play().catch(reserva);
+    return;
+  }
+  garantirVoz(texto);                                              // na próxima vez já sai com a voz da assistente
   const id = ID_DA_FRASE.get(texto);
   if (!id || SEM_AUDIO.has(id)){ falarSintetico(texto); return; }
   let caiu = false;
@@ -953,6 +998,19 @@ function iniciarVista(i, interromper=true){
   montarMiniaturas();
   falar(v.fala, interromper);
 }
+function recorteRosto(det, W, H){
+  if (!det || !det.lm) return null;
+  let x0 = 1, x1 = 0, y0 = 1, y1 = 0;
+  det.lm.forEach(p => { if (p.x < x0) x0 = p.x; if (p.x > x1) x1 = p.x; if (p.y < y0) y0 = p.y; if (p.y > y1) y1 = p.y; });
+  x0 *= W; x1 *= W; y0 *= H; y1 *= H;
+  const fh = y1 - y0, fw = x1 - x0;
+  let topo = y0 - fh * 0.32, base = y1 + fh * 0.85;            // testa/cabelo em cima, pescoço inteiro embaixo
+  let h = base - topo, w = Math.max(h * 0.75, fw * 1.7), cx = (x0 + x1) / 2;
+  if (w > W){ w = W; h = Math.min(h, w / 0.75); }
+  if (h > H){ h = H; w = Math.min(W, h * 0.75); }
+  let x = Math.round(Math.min(Math.max(0, cx - w / 2), W - w)), y = Math.round(Math.min(Math.max(0, topo), H - h));
+  return { x, y, w:Math.round(w), h:Math.round(h) };
+}
 function proxima(){
   if (S.fila.length) iniciarVista(S.fila.shift());
   else finalizar();
@@ -982,7 +1040,15 @@ async function capturar(manual){
   }
   const flash = $('#flash'); flash.classList.add('on'); requestAnimationFrame(() => requestAnimationFrame(() => flash.classList.remove('on')));
   bip();
-  const blob = await new Promise(res => melhor.toBlob(res, 'image/jpeg', 0.95));
+  const original = await new Promise(res => melhor.toBlob(res, 'image/jpeg', 0.95));
+  // Recorte automático: rosto e pescoço inteiros, retrato 3:4 (a foto ampla fica guardada como original)
+  const rc = recorteRosto(detMelhor, W, H);
+  let blob = original;
+  if (rc){
+    const cc = document.createElement('canvas'); cc.width = rc.w; cc.height = rc.h;
+    cc.getContext('2d').drawImage(melhor, rc.x, rc.y, rc.w, rc.h, 0, 0, rc.w, rc.h);
+    blob = await new Promise(res => cc.toBlob(res, 'image/jpeg', 0.95));
+  }
   const r4 = n => Math.round(n*10000)/10000, r1 = n => Math.round(n*10)/10;
   const checagens = {}; ORDEM.forEach(k => { if (r[k]) checagens[k] = r[k].ok; });
   const dados = {
@@ -997,7 +1063,8 @@ async function capturar(manual){
   };
   if (S.fotos[idx]) URL.revokeObjectURL(S.fotos[idx].url);
   if (S.fotos[idx] && S.fotos[idx].fundo) URL.revokeObjectURL(S.fotos[idx].fundo.url);
-  S.fotos[idx] = { blob, url: URL.createObjectURL(blob), dados, fundo:null };
+  dados.recorte = rc;
+  S.fotos[idx] = { blob, original, url: URL.createObjectURL(blob), dados, fundo:null };
   gerarFundoEscuro(idx); // em segundo plano: não atrasa a captura
   TELA.enviarFoto(idx);
   S.puladas.delete(idx); delete S.tentativasPulo[idx];
@@ -1110,13 +1177,14 @@ async function baixarPacote(){
   if (!window.JSZip){ btn.textContent = 'Sem internet para gerar o .zip. Recarregue a página.'; return; } btn.disabled = true; btn.textContent = 'Preparando o pacote…';
   try{
     const zip = new JSZip(), data = dataLocal(S.inicio || new Date()), base = `${data}_${slug(S.paciente) || 'paciente'}`;
-    const fotos = zip.folder('fotos'), dados = zip.folder('dados'), escuras = zip.folder('fotos-fundo-escuro');
+    const fotos = zip.folder('fotos'), dados = zip.folder('dados'), escuras = zip.folder('fotos-fundo-escuro'), amplas = zip.folder('fotos-amplas');
     await filaFundo; // espera terminar as versões com fundo escuro em andamento
     S.fotos.forEach((f, i) => {
       if (!f) return;
       const nome = `${base}_vista-${VISTAS[i].n}`;
       fotos.file(nome + '.jpg', f.blob);
       if (f.fundo) escuras.file(nome + '_fundo-escuro.jpg', f.fundo.blob);
+      if (f.original && f.original !== f.blob) amplas.file(nome + '_ampla.jpg', f.original);
       dados.file(nome + '_pontos.json', JSON.stringify({ vista:VISTAS[i].n, nome:VISTAS[i].nome, formato:'[x, y, z] normalizados (MediaPipe Face Landmarker, 478 pontos)', pontos:f.dados.pontos }));
     });
     const sessao = {
@@ -1140,7 +1208,13 @@ async function baixarPacote(){
    Recorta a pessoa (MediaPipe Selfie Segmentation, roda no aparelho) e pinta
    o fundo com uma cor única. O rosto nunca é alterado; a original é mantida.
    ===================================================================== */
-const FUNDO_COR = params.get('fundo') || '#121614';
+// Fundo colocado pelo sistema: escuro ou claro (lembrado no aparelho)
+const FUNDOS = { escuro:'#121614', claro:'#e9e7e2' };
+let FUNDO_COR = params.get('fundo') || FUNDOS.escuro;
+try { if (localStorage.getItem('kaptora-fundo') === 'claro' && !params.get('fundo')){ FUNDO_COR = FUNDOS.claro; $('#fundo-claro').checked = true; } } catch(e){}
+document.querySelectorAll('input[name=fundo]').forEach(r => r.addEventListener('change', () => {
+  FUNDO_COR = FUNDOS[r.value] || FUNDOS.escuro; try { localStorage.setItem('kaptora-fundo', r.value); } catch(e){}
+}));
 let segmentador = null, filaFundo = Promise.resolve();
 function carregarSegmentador(){
   if (segmentador) return segmentador;
@@ -1191,7 +1265,7 @@ function gerarFundoEscuro(idx){
     } catch(e){ console.error('fundo escuro', e); }
   });
 }
-S.verFundo = false;
+S.verFundo = true;   // mostra com o fundo do sistema; o botão alterna para as originais
 
 /* =====================================================================
    TELA AO LADO (tablet/TV): vídeo ao vivo + estado + fotos, ponto a ponto (WebRTC via PeerJS)
@@ -1341,7 +1415,7 @@ $('#trocar-camera').addEventListener('click', async () => {
 $('#baixar').addEventListener('click', baixarPacote);
 $('#ver-fundo').addEventListener('click', e => {
   S.verFundo = !S.verFundo; e.currentTarget.setAttribute('aria-pressed', String(S.verFundo));
-  e.currentTarget.textContent = S.verFundo ? 'Ver fotos originais' : 'Ver com fundo escuro';
+  e.currentTarget.textContent = S.verFundo ? 'Ver originais (sem fundo)' : 'Ver com o fundo do sistema';
   montarRevisao();
 });
 // DF Análise: módulo carregado só quando usado
@@ -1350,8 +1424,8 @@ async function abrirDFAnalise(origem){
   TELA.analise = m; m.conectarSync(msg => TELA.enviar(msg));
   const perfil = S.fotos[4] || S.fotos[5];
   await m.abrirAnalise({
-    frente: origem === 'revisao' && S.fotos[0] ? S.fotos[0].blob : null,
-    perfil: origem === 'revisao' && perfil ? perfil.blob : null,
+    frente: origem === 'revisao' && S.fotos[0] ? (S.fotos[0].fundo ? S.fotos[0].fundo.blob : S.fotos[0].blob) : null,
+    perfil: origem === 'revisao' && perfil ? (perfil.fundo ? perfil.fundo.blob : perfil.blob) : null,
     paciente: origem === 'revisao' ? S.paciente : ($('#paciente').value.trim() || ''),
     config: CONFIG, marca: MARCA, mostrar, aoVoltar: () => mostrar(origem)
   });
@@ -1395,22 +1469,25 @@ async function iniciarFicha(){
     aviso.append(Object.assign(document.createElement('a'), { href:'./', textContent:'voltar ao painel' }));
   } catch(e){ console.error('ficha', e); aviso.textContent = 'Sem conexão com o painel. A captura funciona; salve depois pelo pacote .zip.'; }
 }
-iniciarFicha();
+iniciarFicha().finally(() => prepararVozes());   // gera/prepara as falas com a voz da assistente
 
 async function salvarNaFicha(){
   const b = $('#salvar-ficha'), st = $('#status-ficha'); b.disabled = true; st.className = 'status-ficha';
   try {
     FICHA.id = FICHA.id || crypto.randomUUID();
+    st.textContent = 'Preparando o fundo das fotos…'; await filaFundo;      // espera o fundo do sistema ficar pronto
     const base = `${FICHA.paciente.marca_id}/${FICHA.paciente.id}/${FICHA.id}`, vistas = [];
     const total = S.fotos.filter(Boolean).length; let n = 0;
     for (let i = 0; i < 9; i++){
       const f = S.fotos[i], v = VISTAS[i];
       if (!f){ vistas.push({ n:v.n, nome:v.nome, status:statusVista(i), arquivo:null }); continue; }
       st.textContent = `Enviando foto ${++n} de ${total}…`;
-      const arquivo = `${base}/vista-${v.n}.jpg`;
-      const { error } = await FICHA.sb.storage.from('capturas').upload(arquivo, f.blob, { contentType:'image/jpeg', upsert:true });
+      // Principal: rosto e pescoço com o fundo do sistema. Original: o mesmo recorte, sem troca de fundo.
+      const arquivo = `${base}/vista-${v.n}.jpg`, arqOriginal = `${base}/vista-${v.n}-original.jpg`;
+      const { error } = await FICHA.sb.storage.from('capturas').upload(arquivo, f.fundo ? f.fundo.blob : f.blob, { contentType:'image/jpeg', upsert:true });
       if (error) throw error;
-      vistas.push({ n:v.n, nome:v.nome, status:statusVista(i), arquivo, pose:f.dados.pose, disparo:f.dados.disparo });
+      if (f.fundo){ const r2 = await FICHA.sb.storage.from('capturas').upload(arqOriginal, f.blob, { contentType:'image/jpeg', upsert:true }); if (r2.error) throw r2.error; }
+      vistas.push({ n:v.n, nome:v.nome, status:statusVista(i), arquivo, original:f.fundo ? arqOriginal : null, pose:f.dados.pose, disparo:f.dados.disparo, fundo:f.fundo ? FUNDO_COR : null });
     }
     const { error } = await FICHA.sb.from('avaliacoes').upsert({ id:FICHA.id, marca_id:FICHA.paciente.marca_id, paciente_id:FICHA.paciente.id,
       profissional:S.operador || null, modo:S.modo, vistas });

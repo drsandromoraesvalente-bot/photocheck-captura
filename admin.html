@@ -136,6 +136,7 @@ h2{font-family:var(--f-display);font-weight:400;font-size:22px;margin:0}
       <div class="grade2">
         <div class="campo"><label for="f-assistente">Nome da assistente</label><input type="text" id="f-assistente" placeholder="Ex.: Kaptora"></div>
         <div class="campo"><label for="f-agente">Agente de conversa livre (ElevenLabs)</label><input type="text" id="f-agente" placeholder="agent_…"><span class="ajuda">Opcional. Vazio = voz guiada, sem conversa.</span></div>
+        <div class="campo"><label for="f-vozid">Voz da assistente (ID no ElevenLabs)</label><input type="text" id="f-vozid" placeholder="7eUAxNOneHxqfyRS77mW (Vicky)"><span class="ajuda">Vazio = voz da Vicky.</span></div>
       </div>
       <div class="campo"><label for="f-saudacao">Frase de abertura</label><textarea id="f-saudacao" style="min-height:70px"></textarea><span class="ajuda">É a primeira frase que a assistente fala para a paciente.</span></div>
     </section>
@@ -216,7 +217,7 @@ function preencher(m){
   $('#titulo').textContent = m.produto || 'Nova marca';
   $('#f-produto').value = atual.produto; $('#f-id').value = atual.id; $('#f-clinica').value = atual.clinica; $('#f-subtitulo').value = atual.subtitulo;
   $('#f-selo').value = atual.selo; $('#f-primaria').value = atual.cores.primaria; $('#f-acento').value = atual.cores.acento;
-  $('#f-assistente').value = atual.assistente.nome; $('#f-agente').value = atual.assistente.agente; $('#f-saudacao').value = atual.assistente.saudacao;
+  $('#f-assistente').value = atual.assistente.nome; $('#f-agente').value = atual.assistente.agente; $('#f-vozid').value = atual.assistente.vozId || ''; $('#f-saudacao').value = atual.assistente.saudacao;
   Object.keys(PADRAO.modulos).forEach(k => $('#m-' + k).checked = !!atual.modulos[k]);
   $('#f-consentimento').value = atual.consentimento; $('#f-rodape').value = atual.rodape; $('#f-credito').checked = atual.creditoTecnologia !== false;
   $('#f-ativo').checked = atual.contrato.ativo !== false;
@@ -239,6 +240,7 @@ function ler_form(){
   if (nomeAnt && nomeAnt !== atual.assistente.nome && s.includes(`eu sou a ${nomeAnt}`)) $('#f-saudacao').value = s.replace(`eu sou a ${nomeAnt}`, `eu sou a ${atual.assistente.nome}`);
   atual.assistente.saudacao = $('#f-saudacao').value.trim() || PADRAO.assistente.saudacao.replace('Kaptora', atual.assistente.nome);
   atual.assistente.agente = $('#f-agente').value.trim();
+  atual.assistente.vozId = $('#f-vozid').value.trim();
   Object.keys(PADRAO.modulos).forEach(k => atual.modulos[k] = $('#m-' + k).checked);
   atual.consentimento = $('#f-consentimento').value.trim() || PADRAO.consentimento;
   atual.rodape = $('#f-rodape').value.trim(); atual.creditoTecnologia = $('#f-credito').checked;

@@ -456,7 +456,7 @@ async function carregarAvaliacoes(){
       const bEx = el('button', { className:'btn perigo peq', type:'button', textContent:'Excluir' });
       bEx.onclick = async () => {
         if (bEx.dataset.c !== '1'){ bEx.dataset.c = '1'; bEx.textContent = 'Toque de novo para excluir'; setTimeout(() => { bEx.dataset.c = ''; bEx.textContent = 'Excluir'; }, 4000); return; }
-        const arqs = (a.vistas || []).filter(v => v && v.arquivo).map(v => v.arquivo);
+        const arqs = (a.vistas || []).flatMap(v => v ? [v.arquivo, v.original].filter(Boolean) : []);
         if (arqs.length) await sb.storage.from('capturas').remove(arqs);
         await sb.from('avaliacoes').delete().eq('id', a.id); carregarAvaliacoes();
       };
@@ -528,7 +528,7 @@ $('#pc-excluir').onclick = async () => {
   if (b.dataset.c !== '1'){ b.dataset.c = '1'; b.textContent = 'Toque de novo: apaga a paciente e as fotos'; setTimeout(() => { b.dataset.c = ''; b.textContent = 'Excluir paciente'; }, 5000); return; }
   const p = ST.editando;
   const { data:avs } = await sb.from('avaliacoes').select('vistas').eq('paciente_id', p.id);
-  const arqs = (avs || []).flatMap(a => (a.vistas || []).filter(v => v && v.arquivo).map(v => v.arquivo));
+  const arqs = (avs || []).flatMap(a => (a.vistas || []).flatMap(v => v ? [v.arquivo, v.original].filter(Boolean) : []));
   if (arqs.length) await sb.storage.from('capturas').remove(arqs);
   const { error } = await sb.from('pacientes').delete().eq('id', p.id);
   if (error) return status('#s-paciente', 'Não excluiu: ' + error.message, 'erro');

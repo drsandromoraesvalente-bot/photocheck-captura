@@ -673,7 +673,7 @@ function pedirDesenho(){ if (!A.renderPendente){ A.renderPendente = true; reques
 
 /* ---------- Interface ---------- */
 const ESTILO = `
-#tela-analise{max-width:760px;margin:0 auto;padding-block:max(20px,env(safe-area-inset-top)) max(40px,env(safe-area-inset-bottom));padding-left:max(16px,env(safe-area-inset-left));padding-right:max(16px,env(safe-area-inset-right));display:grid;gap:18px}
+#tela-analise{max-width:1400px;margin:0 auto;padding-block:max(20px,env(safe-area-inset-top)) max(40px,env(safe-area-inset-bottom));padding-left:max(16px,env(safe-area-inset-left));padding-right:max(16px,env(safe-area-inset-right));display:grid;gap:18px}
 #tela-analise .dfa-topo{display:flex;align-items:center;gap:12px}
 #tela-analise .dfa-voltar{border:1px solid var(--linha);background:var(--cartao);border-radius:999px;padding:8px 14px;font-weight:700}
 #tela-analise .dfa-voltar{white-space:nowrap;flex:none}
@@ -681,19 +681,39 @@ const ESTILO = `
 #tela-analise .dfa-topo .wordmark b{font-size:20px}
 #tela-analise h1{font-family:var(--f-display);font-weight:400;font-size:clamp(26px,5vw,34px);margin:0;line-height:1.1;text-transform:uppercase;letter-spacing:.04em}
 #tela-analise .dfa-sub{color:var(--fg2);font-size:14px;margin:4px 0 0}
-.dfa-abas{display:flex;gap:6px;border-bottom:1px solid var(--linha)}
+.dfa-abas{display:flex;gap:6px;border-bottom:1px solid var(--linha);align-items:flex-end}
 .dfa-aba{border:0;background:none;padding:10px 14px;font-weight:700;color:var(--fg2);border-bottom:2px solid transparent;margin-bottom:-1px}
 .dfa-aba[aria-selected="true"]{color:var(--fg);border-bottom-color:var(--acento)}
-.dfa-foto{position:relative;border-radius:10px;overflow:hidden;background:#0a1310;touch-action:none}
-#dfa-canvas{display:block;width:100%}
+.dfa-foto{position:relative;border-radius:10px;overflow:hidden;background:#0a1310;touch-action:none;display:grid;place-items:center}
+#dfa-canvas{display:block;max-width:100%;width:auto;height:auto;max-height:calc(100vh - 150px)}
+/* Foto e controles lado a lado: mexe no controle e vê a foto mudar na hora */
+.dfa-corpo{display:grid;grid-template-columns:minmax(0,1fr) 400px;gap:20px;align-items:start}
+.dfa-palco{position:sticky;top:8px;display:grid;gap:10px;align-content:start}
+.dfa-lado{position:sticky;top:8px;max-height:calc(100vh - 16px);overflow:auto;display:grid;gap:12px;align-content:start;overscroll-behavior:contain;padding-right:2px}
+.dfa-lado-abas{display:flex;gap:6px;position:sticky;top:0;z-index:2;background:var(--bg);padding-bottom:6px}
+.dfa-la{flex:1;border:1px solid var(--linha);background:var(--cartao);border-radius:999px;padding:9px 12px;font-weight:700;font-size:14px}
+.dfa-la[aria-selected="true"]{background:var(--botao-bg);color:var(--botao-fg);border-color:var(--botao-bg)}
+.dfa-sim .linha.fora label .n{color:var(--fg2)}
+.dfa-onde{font-size:11px;font-weight:600;color:var(--fg2);margin-left:6px;font-style:italic}
+@media (max-width:900px){
+  .dfa-corpo{grid-template-columns:1fr;gap:12px}
+  /* celular: a foto fica presa no topo enquanto os controles rolam embaixo */
+  .dfa-palco{z-index:3;background:var(--bg);padding-bottom:6px;top:0;border-bottom:1px solid var(--linha)}
+  #dfa-canvas{max-height:40vh}
+  .dfa-ferr{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
+  .dfa-ferr > *{flex:none}
+  .dfa-lado{position:static;max-height:none;overflow:visible}
+}
 .dfa-vazio{padding:40px 20px;text-align:center;color:#f9f5ed;display:grid;gap:12px;justify-items:center}
 .dfa-vazio label{border:1px solid #ceb78e;color:#ceb78e;border-radius:999px;padding:10px 18px;font-weight:700;cursor:pointer}
 .dfa-vazio input{display:none}
-.dfa-harmonia{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
-.dfa-harmonia .n{font-family:var(--f-display);font-size:44px;line-height:1}
+.dfa-harmonia{display:flex;align-items:baseline;gap:8px;margin-left:auto;align-self:center}
+.dfa-harmonia .n{font-family:var(--f-display);font-size:26px;line-height:1}
+.dfa-harmonia .dfa-sub{display:none}
 .dfa-harmonia .n small{font-size:18px;color:var(--fg2)}
 .dfa-harmonia .t{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--fg2);font-weight:700}
-.dfa-ferr{display:flex;flex-wrap:wrap;gap:8px}
+.dfa-ferr{display:flex;flex-wrap:nowrap;gap:8px;overflow-x:auto;scrollbar-width:none}
+.dfa-ferr > *{flex:none}
 .dfa-btn{border:1px solid var(--linha);background:var(--cartao);border-radius:999px;padding:9px 14px;font-weight:700;font-size:13px}
 .dfa-btn[aria-pressed="true"]{background:var(--botao-bg);color:var(--botao-fg);border-color:var(--botao-bg)}
 .dfa-lista{display:grid;gap:10px}
@@ -742,9 +762,12 @@ function montarTela(){
   s.innerHTML = `
     <div class="dfa-topo"><button class="dfa-voltar" id="dfa-voltar">← Voltar</button><div class="marca" style="margin-left:auto"><span class="selo" data-m="selo">K</span><span class="wordmark" data-m="wordmark"><b>Kaptora</b><small>Face Scan</small></span></div></div>
     <header><h1 id="dfa-titulo">Análise facial</h1><p class="dfa-sub" id="dfa-sub"></p></header>
+    <div class="dfa-corpo">
+    <div class="dfa-palco">
     <div class="dfa-abas" role="tablist">
       <button class="dfa-aba" role="tab" id="dfa-aba-frente" data-v="frente" aria-selected="true">Frente</button>
       <button class="dfa-aba" role="tab" id="dfa-aba-perfil" data-v="perfil" aria-selected="false">Perfil</button>
+      <span class="dfa-harmonia"><span class="t">Harmonia</span><span class="n" id="dfa-harm">—</span><span class="dfa-sub" id="dfa-harm-txt"></span></span>
     </div>
     <div class="dfa-foto" id="dfa-foto"><canvas id="dfa-canvas"></canvas><div class="dfa-vazio" id="dfa-vazio" hidden></div></div>
     <div class="dfa-ferr">
@@ -763,13 +786,22 @@ function montarTela(){
       <button class="dfa-btn" id="dfa-trocar">Trocar foto</button>
       <input type="file" id="dfa-arquivo" accept="image/*" hidden>
     </div>
-    <div class="dfa-harmonia"><span class="t">Harmonia</span><span class="n" id="dfa-harm">—</span><span class="dfa-sub" id="dfa-harm-txt"></span></div>
-    <div class="dfa-lista" id="dfa-lista"></div>
-    <section class="dfa-sim" id="dfa-sim"></section>
-    <p class="dfa-nota-legal">Análise de apoio à consulta. As medidas são estimadas a partir de foto 2D, com a íris como régua (11,7 mm), e devem ser conferidas pelo profissional. A simulação é ilustrativa e educativa: não é promessa de resultado.</p>
-    <p class="dfa-nota-legal" id="dfa-rodape">Kaptora Face Scan · Produzido por Aurya Nexus Technologies</p>`;
+    </div>
+    <aside class="dfa-lado" aria-label="Planejamento e medidas">
+      <div class="dfa-lado-abas" role="tablist">
+        <button class="dfa-la" role="tab" data-l="plano" aria-selected="true">Planejamento</button>
+        <button class="dfa-la" role="tab" data-l="medidas" aria-selected="false">Medidas</button>
+      </div>
+      <section class="dfa-sim" id="dfa-sim"></section>
+      <div class="dfa-lista" id="dfa-lista" hidden></div>
+      <p class="dfa-nota-legal">Análise de apoio à consulta. As medidas são estimadas a partir de foto 2D, com a íris como régua (11,7 mm), e devem ser conferidas pelo profissional. A simulação é ilustrativa e educativa: não é promessa de resultado.</p>
+      <p class="dfa-nota-legal" id="dfa-rodape">Kaptora Face Scan · Produzido por Aurya Nexus Technologies</p>
+    </aside>
+    </div>
+`;
   document.body.append(s);
   $('#dfa-voltar').onclick = () => { s.hidden = true; A.aoVoltar && A.aoVoltar(); };
+  s.querySelectorAll('.dfa-la').forEach(b => b.onclick = () => mostrarLado(b.dataset.l));
   s.querySelectorAll('.dfa-aba').forEach(b => b.onclick = () => trocarVista(b.dataset.v));
   $('#dfa-ajustar').onclick = () => { A.ajustando = !A.ajustando; if (A.ajustando) A.desenhando = false; sincronizarBotoes(); pedirDesenho(); };
   $('#dfa-mapa').onclick = () => { A.mapa = !A.mapa; sincronizarBotoes(); pedirDesenho(); };
@@ -820,10 +852,28 @@ function sincronizarBotoes(){
   $('#dfa-cores').hidden = !A.desenhando;
 }
 
-function trocarVista(v){
+function trocarVista(v, manterPainel){
   A.vista = v; A.sel = null;
   document.querySelectorAll('.dfa-aba').forEach(b => b.setAttribute('aria-selected', String(b.dataset.v === v)));
-  renderTudo();
+  if (manterPainel){ renderVazio(); sincronizarBotoes(); atualizarLista(); marcarVistas(); pedirDesenho(); }
+  else renderTudo();
+}
+// Painel lateral: Planejamento ou Medidas (um de cada vez, ao lado da foto)
+function mostrarLado(l){
+  A.lado = l;
+  document.querySelectorAll('.dfa-la').forEach(b => b.setAttribute('aria-selected', String(b.dataset.l === l)));
+  const semPlano = !metodoDF() || $('#dfa-sim').dataset.vazio === '1';
+  $('#dfa-sim').hidden = l !== 'plano' || semPlano; $('#dfa-lista').hidden = l !== 'medidas';
+}
+// Em qual vista cada zona/código aparece na simulação
+const VISTAS_ITEM = { frente:['z1','z2','z21','z3','z4','z5','T','ZG','M','OL1','SN'], perfil:['ME','z1','z4'] };
+const apareceEm = k => ['frente', 'perfil'].filter(v => VISTAS_ITEM[v].includes(k));
+function marcarVistas(){
+  document.querySelectorAll('.dfa-sim .linha[data-k]').forEach(l => {
+    const k = l.dataset.k, onde = apareceEm(k), aqui = onde.includes(A.vista), dica = l.querySelector('.dfa-onde');
+    l.classList.toggle('fora', !aqui);
+    dica.textContent = !onde.length ? 'só no plano' : aqui ? '' : (onde[0] === 'perfil' ? 'aparece no perfil' : 'aparece de frente');
+  });
 }
 
 async function usarArquivo(vista, arquivo){
@@ -898,8 +948,10 @@ function acoesDoPlano(){
 
 function montarSimulacao(){
   const box = $('#dfa-sim'), d = A.dados[A.vista];
-  box.hidden = !d || !d.pts || !metodoDF();
-  if (box.hidden) return;
+  const vazio = !d || !d.pts || !metodoDF();
+  box.dataset.vazio = vazio ? '1' : '0';
+  document.querySelector('.dfa-la[data-l="plano"]').hidden = !metodoDF();
+  if (vazio){ box.innerHTML = ''; mostrarLado(metodoDF() && A.lado !== 'medidas' ? 'plano' : 'medidas'); return; }
   const s = A.sim;
   box.innerHTML = `<h2>Planejamento</h2>
     <div class="linha"><label for="dfa-tecnica"><span>Modelo de técnica</span></label>
@@ -916,10 +968,13 @@ function montarSimulacao(){
     const h = document.createElement('h3'); h.className = 'dfa-grupo'; h.textContent = g.titulo; box.append(h);
     g.itens.forEach(r => {
       const [k, nome, acao, min, max, passo] = r;
-      const l = document.createElement('div'); l.className = 'linha';
-      l.innerHTML = `<label for="dfa-s-${k}"><span><span class="n"></span><span class="dfa-chip ${acao}"></span></span><span class="v"></span></label><input type="range" id="dfa-s-${k}" min="${min}" max="${max}" step="${passo}" value="${s[k]}">`;
+      const l = document.createElement('div'); l.className = 'linha'; l.dataset.k = k;
+      l.innerHTML = `<label for="dfa-s-${k}"><span><span class="n"></span><span class="dfa-chip ${acao}"></span><span class="dfa-onde"></span></span><span class="v"></span></label><input type="range" id="dfa-s-${k}" min="${min}" max="${max}" step="${passo}" value="${s[k]}">`;
       l.querySelector('.n').textContent = nome; l.querySelector('.dfa-chip').textContent = ACAO[acao]; l.querySelector('.v').textContent = valorTxt(r, s[k]);
       l.querySelector('input').oninput = e => {
+        // Mexeu numa zona que não aparece nesta vista: troca para a vista onde ela aparece, sem perder o controle
+        const onde = apareceEm(k), outra = onde.find(v => v !== A.vista);
+        if (onde.length && !onde.includes(A.vista) && A.dados[outra] && A.dados[outra].pts) trocarVista(outra, true);
         s[k] = parseFloat(e.target.value); l.querySelector('.v').textContent = valorTxt(r, s[k]);
         if (A.tecnica){ A.tecnica = ''; sel.value = ''; }
         pedirDesenho(); atualizarLista();
@@ -933,6 +988,7 @@ function montarSimulacao(){
   const baixar = document.createElement('button'); baixar.className = 'dfa-btn'; baixar.textContent = 'Baixar plano (imagem)';
   baixar.onclick = baixarPlano;
   acoes.append(zerar, baixar); box.append(acoes);
+  marcarVistas(); mostrarLado(A.lado || 'plano');
 }
 
 // Exporta: antes | planejado (com as linhas e o desenho como estão na tela) + lista de ações e medidas
