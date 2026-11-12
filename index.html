@@ -480,16 +480,23 @@ async function abrirAnaliseDaAvaliacao(a, botao){
     const [frente, perfil] = await Promise.all([fr ? baixarFoto(fr.arquivo) : null, pf ? baixarFoto(pf.arquivo) : null]);
     const m = await import('./analise.js');
     const host = $('#analise-host');
+    // Todas as fotos da avaliação ficam à mão para trocar sem sair da análise
+    const comFoto = (a.vistas || []).filter(x => x && x.arquivo);
+    let assinadas = [];
+    try { const r = await sb.storage.from('capturas').createSignedUrls(comFoto.map(x => x.arquivo), 3600); assinadas = r.data || []; } catch(e){}
+    const galeria = comFoto.map((x, i) => ({ n:x.n, nome:x.nome || ('Vista ' + x.n), url:(assinadas[i] && assinadas[i].signedUrl) || '', obter:() => baixarFoto(x.arquivo) }));
+    let apagado = false;
+    const salvarPlano = async plano => { const { error } = await sb.from('avaliacoes').update({ plano }).eq('id', a.id); if (error) throw error; a.plano = plano; apagado = false; };
     await m.abrirAnalise({
-      frente, perfil, paciente:ST.paciente.nome, marca:window.MARCA,
+      frente, perfil, paciente:ST.paciente.nome, marca:window.MARCA, galeria,
+      salvar: salvarPlano,
+      excluir: async () => { const { error } = await sb.from('avaliacoes').update({ plano:null }).eq('id', a.id); if (error) throw error; a.plano = null; apagado = true; },
       config:{ bundle:caminho('./mediapipe/vision_bundle.js'), wasm:caminho('./mediapipe/wasm'), modelo:caminho('./modelo/face_landmarker.task') },
       mostrar: () => { $('#painel').hidden = true; host.hidden = false; },
       aoVoltar: async () => {
         // Salva o planejamento na avaliação ao sair
-        const plano = m.estadoAtual();
         $('#painel').hidden = false; host.hidden = true;
-        const { error } = await sb.from('avaliacoes').update({ plano }).eq('id', a.id);
-        if (!error) a.plano = plano;
+        if (!apagado){ try { await salvarPlano(m.estadoAtual()); } catch(e){ console.error(e); } }
         carregarAvaliacoes();
       }
     });
